@@ -58,3 +58,9 @@ dialog > .group-tags{justify-content:flex-start;margin:0 0 12px}.record-mark svg
 .record-item{display:flex;align-items:flex-start;gap:12px;padding:22px 0;border-bottom:1px solid var(--line)}.record-item-text{flex:1;min-width:0;font-size:16px;line-height:1.6;overflow-wrap:anywhere;white-space:pre-wrap}.record-item-actions{display:flex;flex-shrink:0;gap:4px}.record-item-actions button{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:8px;color:var(--muted)}.record-item-actions button:hover{background:var(--surface-muted)}.record-item-actions button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 
 #group-theme.theme-picker span{padding-left:17px}
+
+.group-title-line [hidden]{display:none!important}
+#group-title-editor{position:relative;flex:1;min-width:0;margin:8px 0 12px}
+#group-title-editor input{padding-right:70px;font-size:20px}
+#group-title-save{position:absolute;right:8px;top:50%;transform:translateY(-50%);padding:8px 12px;font-size:14px;font-weight:650;color:var(--primary);border-radius:6px}
+#group-title-save:hover{background:var(--primary-tint)}

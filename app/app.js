@@ -74,20 +74,22 @@ function groupDetail(id) {
   const items=groupItems(id);if(!items.length)return;
   const record=items[0],ids=new Set(items.map(r=>r.id));
   const themeIds=[...new Set(items.flatMap(r=>r.themes))],initialTheme=themeIds.length===1&&THEMES.some(t=>t.id===themeIds[0])?themeIds[0]:'';
-  showDialog(`${closeButton}<div class="group-title-line"><h2><span id="group-title-label">${esc(record.group||'해낸 일')}</span><input id="group-title-input" aria-label="묶음 제목" maxlength="80" value="${esc(record.group||'')}" hidden> <span class="count">${items.length}</span></h2><button id="group-title-edit" aria-label="묶음 제목 수정">${pencilIcon}</button></div><fieldset id="group-theme" class="theme-picker"><legend class="sr-only">묶음 테마</legend>${THEMES.map(t=>`<label style="--accent:${t.color}"><input type="radio" name="group-theme" value="${t.id}" ${initialTheme===t.id?'checked':''}><span>${themeIcons[t.id]}${t.name}</span></label>`).join('')}</fieldset><div class="group-history">${items.map(r=>recordRow(r)).join('')}</div>`);
+  showDialog(`${closeButton}<div class="group-title-line"><h2 id="group-title-heading"><span id="group-title-label">${esc(record.group||'해낸 일')}</span> <span class="count">${items.length}</span></h2><button id="group-title-edit" aria-label="묶음 제목 수정">${pencilIcon}</button><div id="group-title-editor" hidden><input id="group-title-input" aria-label="묶음 제목" maxlength="80" value="${esc(record.group||'')}" hidden><button id="group-title-save" type="button">저장</button></div></div><fieldset id="group-theme" class="theme-picker"><legend class="sr-only">묶음 테마</legend>${THEMES.map(t=>`<label style="--accent:${t.color}"><input type="radio" name="group-theme" value="${t.id}" ${initialTheme===t.id?'checked':''}><span>${themeIcons[t.id]}${t.name}</span></label>`).join('')}</fieldset><div class="group-history">${items.map(r=>recordRow(r)).join('')}</div>`);
   const input=dialog.querySelector('#group-title-input'),label=dialog.querySelector('#group-title-label'),select=dialog.querySelector('#group-theme');
+  const heading=dialog.querySelector('#group-title-heading'),editor=dialog.querySelector('#group-title-editor'),edit=dialog.querySelector('#group-title-edit'),save=dialog.querySelector('#group-title-save');
   let storedName=record.group||'',storedTheme=initialTheme,pending=Promise.resolve(true);
   const paintTheme=()=>{select.querySelectorAll('input').forEach(input=>{input.checked=input.value===storedTheme;});};
   const patch=async values=>update(s=>{for(const id of ids){const r=s.records.find(r=>r.id===id);if(!r)throw new Error('기록이 변경됐어요. 다시 열어주세요.');Object.assign(r,values);}});
   const saveTitle=()=>pending=pending.then(async()=>{
     if(input.hidden)return true;
-    const name=input.value.trim();input.disabled=true;
-    const ok=name===storedName||await patch({group:name});input.disabled=false;
+    const name=input.value.trim();input.disabled=true;save.disabled=true;
+    const ok=name===storedName||await patch({group:name});input.disabled=false;save.disabled=false;
     if(!ok){input.focus();return false;}
-    storedName=name;label.textContent=name||'해낸 일';input.hidden=true;label.hidden=false;render();return true;
+    storedName=name;label.textContent=name||'해낸 일';input.hidden=true;editor.hidden=true;heading.hidden=false;edit.hidden=false;render();return true;
   });
   groupEditor={saveTitle};
-  dialog.querySelector('#group-title-edit').onclick=()=>{input.hidden=false;label.hidden=true;input.focus();input.select();};
+  edit.onclick=()=>{heading.hidden=true;edit.hidden=true;editor.hidden=false;input.hidden=false;input.focus();input.select();};
+  save.onclick=saveTitle;
   input.onkeydown=event=>{if(event.key==='Enter'&&!event.isComposing){event.preventDefault();void saveTitle();}};
   select.onchange=event=>{
     const value=event.target.value;
