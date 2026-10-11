@@ -73,3 +73,20 @@ test('과거 날짜 요청과 완료 초안은 선택한 한국 날짜를 유지
  assert.equal(ready.job.status,'ready');assert.equal(ready.job.records[0].date,past);
  assert.throws(()=>validateDraft({...draft(job),date},job));
 });
+
+test('클라우드 연결은 지정한 HTTPS 원본·요청 헤더만 허용한다',async t=>{
+ const origin='https://bomi.example.com';let calls=0;
+ const server=createAppServer({status:async()=>({connected:true,job:null}),collect:async()=>{calls++;return {job:{status:'queued'}};}},{cloudOrigin:origin});
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));t.after(()=>new Promise(r=>server.close(r)));
+ const base=`http://127.0.0.1:${server.address().port}/api/codex`;
+ const headers={Origin:origin,'Sec-Fetch-Site':'cross-site','X-Bomi-Request':'1'};
+ const preflight=await fetch(`${base}/collect`,{method:'OPTIONS',headers:{Origin:origin,'Access-Control-Request-Method':'POST','Access-Control-Request-Headers':'content-type,x-bomi-request','Access-Control-Request-Private-Network':'true'}});
+ assert.equal(preflight.status,204);assert.equal(preflight.headers.get('Access-Control-Allow-Origin'),origin);assert.equal(preflight.headers.get('Access-Control-Allow-Private-Network'),'true');
+ assert.equal((await fetch(`${base}/status`,{headers})).status,200);
+ assert.equal((await fetch(`${base}/status`,{headers:{Origin:origin}})).status,403);
+ const other=await fetch(`${base}/status`,{headers:{...headers,Origin:'https://evil.example'}});assert.equal(other.status,403);assert.equal(other.headers.get('Access-Control-Allow-Origin'),null);
+ assert.equal((await fetch(`${base}/collect`,{method:'POST',headers:{...headers,'Content-Type':'text/plain'},body:'{}'})).status,403);
+ assert.equal(calls,0);
+ assert.equal((await fetch(`${base}/collect`,{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({date})})).status,200);assert.equal(calls,1);
+ assert.throws(()=>createAppServer({}, {cloudOrigin:'https://example.com/path'}));
+});

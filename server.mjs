@@ -11,17 +11,32 @@ const allowed = new Map([
   ['/manifest.webmanifest', ['manifest.webmanifest', 'application/manifest+json']]
 ]);
 for (let stage=0;stage<=3;stage++) allowed.set(`/assets/flower-stage-${stage}.png`,[`assets/flower-stage-${stage}.png`,'image/png']);
-export function createAppServer(bridge=createBridge()) { return createServer(async (req, res) => {
+export function createAppServer(bridge=createBridge(), {cloudOrigin=''}={}) {
+  if(cloudOrigin && (!/^https:\/\/[^/]+$/.test(cloudOrigin) || new URL(cloudOrigin).origin!==cloudOrigin))throw new Error('보미의 HTTPS 원본 주소를 입력해주세요.');
+  return createServer(async (req, res) => {
   const host=`127.0.0.1:${req.socket.localPort}`;
   const json=(status,value)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(value));};
   if(req.headers.host!==host)return json(403,{error:'로컬 보미 주소에서만 사용할 수 있어요.'});
   let path;try{path=new URL(req.url,'http://localhost').pathname;}catch{return json(400,{error:'주소를 확인해주세요.'});}
   if(path==='/api/config'&&req.method==='GET')return json(200,{mode:'local'});
   if(path.startsWith('/api/codex/')) {
-    if(req.headers['sec-fetch-site']==='cross-site'||(req.headers.origin&&req.headers.origin!==`http://${host}`))return json(403,{error:'보미 화면에서 요청해주세요.'});
+    const remote=!!cloudOrigin && req.headers.origin===cloudOrigin;
+    if(remote){
+      res.setHeader('Access-Control-Allow-Origin',cloudOrigin);
+      res.setHeader('Vary','Origin');
+      if(req.method==='OPTIONS'){
+        if(!['GET','POST'].includes(req.headers['access-control-request-method']))return json(403,{error:'지원하지 않는 요청이에요.'});
+        res.setHeader('Access-Control-Allow-Methods','GET, POST');
+        res.setHeader('Access-Control-Allow-Headers','Content-Type, X-Bomi-Request');
+        res.setHeader('Access-Control-Allow-Private-Network','true');
+        res.writeHead(204);return res.end();
+      }
+      if(req.headers['x-bomi-request']!=='1')return json(403,{error:'보미 화면에서 요청해주세요.'});
+    }
+    if(!remote && (req.headers['sec-fetch-site']==='cross-site'||(req.headers.origin&&req.headers.origin!==`http://${host}`)))return json(403,{error:'보미 화면에서 요청해주세요.'});
     try {
       if(path==='/api/codex/status'&&req.method==='GET')return json(200,await bridge.status());
-      if(req.method!=='POST'||req.headers.origin!==`http://${host}`||req.headers['x-bomi-request']!=='1'||req.headers['content-type']!=='application/json')return json(403,{error:'보미 화면에서 요청해주세요.'});
+      if(req.method!=='POST'||(!remote && req.headers.origin!==`http://${host}`)||req.headers['x-bomi-request']!=='1'||req.headers['content-type']!=='application/json')return json(403,{error:'보미 화면에서 요청해주세요.'});
       let body='';for await(const chunk of req){body+=chunk;if(Buffer.byteLength(body)>8192)return json(413,{error:'요청이 너무 커요.'});}
       let value;try{value=JSON.parse(body);}catch{return json(400,{error:'요청 형식을 확인해주세요.'});}
       if(path==='/api/codex/collect')return json(200,await bridge.collect(value?.date));
@@ -41,6 +56,9 @@ export function createAppServer(bridge=createBridge()) { return createServer(asy
   } catch { res.writeHead(500); res.end('Unable to load page'); }
 }); }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
-  const port=Number(process.env.PORT||4173);
-  createAppServer().listen(port,'127.0.0.1',()=>console.log(`Bomi: http://127.0.0.1:${port}`));
+  const bridgeMode=process.argv[2]==='--bridge';
+  const cloudOrigin=bridgeMode?process.argv[3]:'';
+  if(bridgeMode&&!cloudOrigin)throw new Error('npm run bridge -- https://보미주소 형식으로 실행해주세요.');
+  const port=Number(process.env.PORT||(bridgeMode?4174:4173));
+  createAppServer(undefined,{cloudOrigin}).listen(port,'127.0.0.1',()=>console.log(`Bomi: http://127.0.0.1:${port}`));
 }

@@ -79,3 +79,16 @@ export async function disablePush() {
   await api('/api/push','DELETE',subscription.toJSON());
   await subscription.unsubscribe();
 }
+
+// Only this computer's loopback companion is contacted; credentials never leave the cloud origin.
+export async function codexRequest(action, value, local = false) {
+  const response = await fetch(`${local ? '' : 'http://127.0.0.1:4174'}/api/codex/${action}`, {
+    method:value === undefined ? 'GET' : 'POST', credentials:'omit', redirect:'error', cache:'no-store',
+    targetAddressSpace:'loopback', signal:AbortSignal.timeout(value === undefined ? 15000 : 50000),
+    headers:{'X-Bomi-Request':'1', ...(value === undefined ? {} : {'Content-Type':'application/json'})},
+    ...(value === undefined ? {} : {body:JSON.stringify(value)})
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || '이 컴퓨터의 Codex 연결을 확인해주세요.');
+  return result;
+}
