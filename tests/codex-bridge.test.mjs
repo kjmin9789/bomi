@@ -118,3 +118,15 @@ test('같은 채팅의 서로 다른 작업을 별도 항목으로 받고 작업
  assert.throws(()=>validateDraft({...raw,records:[tasks[0],tasks[0]]},job));
  assert.equal(validateDraft({...raw,records:[{...item,taskKey:undefined}]},{id:'job',date}).records.length,1);
 });
+
+test('자동 전송 결과를 검증 후 ready로 수신하고 종료한 요청은 실패로 되살리지 않는다',async t=>{
+ let finish,rejectRun;
+ const {bridge}=await fixture(t,async()=>({threadId,done:new Promise((resolve,reject)=>{finish=resolve;rejectRun=reject;})}));
+ const queued=await bridge.collect(date);assert.equal(queued.job.status,'queued');assert.equal(queued.job.threadId,threadId);
+ finish(draft(queued.job));
+ let ready;for(let i=0;i<100;i++){ready=await bridge.status();if(ready.job.status==='ready')break;await new Promise(r=>setTimeout(r,5));}
+ assert.equal(ready.job.status,'ready');assert.equal(ready.job.records.length,1);
+ await bridge.close(ready.job.id);
+ const next=await bridge.collect(date);await bridge.close(next.job.id);rejectRun(new Error('private'));
+ await new Promise(r=>setTimeout(r,20));assert.equal((await bridge.status()).job,null);
+});
