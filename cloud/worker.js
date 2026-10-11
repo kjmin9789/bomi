@@ -1,6 +1,6 @@
 import {createRemoteJWKSet, jwtVerify} from 'jose';
 import {buildPushPayload} from '@block65/webcrypto-web-push';
-import {emptyState, validateState} from '../app/model.js';
+import {emptyState, validateState, routineDue} from '../app/model.js';
 
 const MAX_BODY = 1024 * 1024;
 const keySets = new Map();
@@ -57,6 +57,7 @@ export async function saveState(db, owner, input) {
   const body = JSON.stringify(state);
   if (new TextEncoder().encode(body).length > MAX_BODY - 1024) throw failure(413, '백업 후 기록 용량을 확인해주세요.');
   const current = await readState(db, owner);
+  if ((current.state.routines.length || current.state.checkins.length) && (!Array.isArray(input.state.routines) || !Array.isArray(input.state.checkins))) throw failure(409, '반복 질문을 보존하려면 보미를 새로고침한 뒤 다시 저장해주세요.');
   if (current.mutation === input.mutation && JSON.stringify(current.state) === body) return {revision:current.revision};
   if (current.revision !== input.revision) throw failure(409, '다른 기기에서 기록이 바뀌었어요. 입력은 이 기기에 보존했어요.');
   const now = Date.now();
@@ -86,20 +87,26 @@ export function reminderDue(state, now) {
   return state.reminder && time >= state.reminder && !state.rest.includes(day) && !state.records.some(r=>r.date===day) && !(state.snoozed[day] > +now) ? day : null;
 }
 
+export function dueNotifications(state,now) {
+  const day=reminderDue(state,now);
+  return [...(day?[{key:day,body:'혹시 오늘 해낸 일이 있나요? 하나만 남겨볼까요?'}]:[]),...routineDue(state,now).map(r=>({key:r.key,body:r.title}))];
+}
 export async function sendReminders(env, now = new Date(), send = fetch) {
   if (!env.ALLOWED_EMAIL || !env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY || !env.VAPID_SUBJECT) return;
   const owner = env.ALLOWED_EMAIL.toLowerCase();
   const {state} = await readState(env.DB, owner);
-  const day = reminderDue(state, now); if (!day) return;
+  const questions=dueNotifications(state,now); if(!questions.length)return;
   const {results} = await env.DB.prepare('SELECT id, body FROM subscriptions WHERE owner = ?').bind(owner).all();
-  for (const row of results) {
+  for (const row of results) for(const question of questions) {
     const latest = await readState(env.DB, owner);
-    if (!reminderDue(latest.state, now)) break;
+    const current=dueNotifications(latest.state,now).find(q=>q.key===question.key);
+    if(!current)continue;
+    const day=current.key;
     const claim = await env.DB.prepare("INSERT OR IGNORE INTO deliveries(owner, subscription_id, day, status) VALUES (?, ?, ?, 'attempted')").bind(owner, row.id, day).run();
     if (!claim.meta.changes) continue;
     try {
       const subscription = validateSubscription(JSON.parse(row.body));
-      const payload = await buildPushPayload({data:JSON.stringify({title:'보미',body:'혹시 오늘 해낸 일이 있나요? 하나만 남겨볼까요?',day}),options:{ttl:300}}, subscription, {subject:env.VAPID_SUBJECT,publicKey:env.VAPID_PUBLIC_KEY,privateKey:env.VAPID_PRIVATE_KEY});
+      const payload = await buildPushPayload({data:JSON.stringify({title:'보미',body:current.body,day}),options:{ttl:300}}, subscription, {subject:env.VAPID_SUBJECT,publicKey:env.VAPID_PUBLIC_KEY,privateKey:env.VAPID_PRIVATE_KEY});
       const response = await send(subscription.endpoint, {...payload, redirect:'error', signal:AbortSignal.timeout(10000)});
       if (response.status === 404 || response.status === 410) await env.DB.prepare('DELETE FROM subscriptions WHERE owner = ? AND id = ?').bind(owner,row.id).run();
       await env.DB.prepare('UPDATE deliveries SET status = ? WHERE owner = ? AND subscription_id = ? AND day = ?').bind(response.ok ? 'sent' : 'failed',owner,row.id,day).run();
@@ -108,6 +115,7 @@ export async function sendReminders(env, now = new Date(), send = fetch) {
       await env.DB.prepare("UPDATE deliveries SET status = 'failed' WHERE owner = ? AND subscription_id = ? AND day = ?").bind(owner,row.id,day).run();
     }
   }
+  const day=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul'}).format(now);
   await env.DB.prepare("DELETE FROM deliveries WHERE day < date(?, '-30 days')").bind(day).run();
 }
 
