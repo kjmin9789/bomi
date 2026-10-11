@@ -54,7 +54,7 @@ function calendar() {
 }
 function recordsList(records) {
   if(!records.length) return `<div class="empty"><span>아직 기록이 없어요.</span><p>이미 한 일이 있다면 한 줄만 적어보세요.</p></div>`;
-  return groupRecords(records).map(([name,items])=>`<section class="work-group">${name?`<h3 class="work-group-title">${esc(name)}</h3>`:''}${items.map(r=>`<article class="record"><div class="record-mark" style="--accent:${theme(r.themes[0]).color}">✓</div><div class="record-body"><div class="chips">${chips(r.themes)}</div><h3>${esc(r.text)}</h3>${r.result?`<p>${esc(r.result)}</p>`:''}<div class="record-actions"><button data-action="edit" data-id="${esc(r.id)}">수정</button><button data-action="save-tip" data-id="${esc(r.id)}" aria-pressed="${r.saved}">${r.saved?'♥ 보관 중':'♡ 다시 볼 기록'}</button><button data-action="delete" data-id="${esc(r.id)}">삭제</button></div></div></article>`).join('')}</section>`).join('');
+  return groupRecords(records).map(([name,items])=>`<section class="work-group">${name?`<h3 class="work-group-title">${esc(name)}</h3>`:''}${items.map(r=>`<article class="record"><div class="record-mark" style="--accent:${theme(r.themes[0]).color}">✓</div><div class="record-body"><div class="chips">${chips(r.themes)}</div><h3>${esc(r.text)}</h3><div class="record-actions"><button data-action="edit" data-id="${esc(r.id)}">수정</button><button data-action="save-tip" data-id="${esc(r.id)}" aria-pressed="${r.saved}">${r.saved?'♥ 보관 중':'♡ 다시 볼 기록'}</button><button data-action="delete" data-id="${esc(r.id)}">삭제</button></div></div></article>`).join('')}</section>`).join('');
 }
 function daily() {
   const flags=activeThemes(data().records,selected), total=flags.filter(Boolean).length;
