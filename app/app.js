@@ -74,10 +74,10 @@ function groupDetail(id) {
   const items=groupItems(id);if(!items.length)return;
   const record=items[0],ids=new Set(items.map(r=>r.id));
   const themeIds=[...new Set(items.flatMap(r=>r.themes))],initialTheme=themeIds.length===1&&THEMES.some(t=>t.id===themeIds[0])?themeIds[0]:'';
-  showDialog(`${closeButton}<div class="group-title-line"><h2><span id="group-title-label">${esc(record.group||'해낸 일')}</span><input id="group-title-input" aria-label="묶음 제목" maxlength="80" value="${esc(record.group||'')}" hidden> <span class="count">${items.length}</span></h2><button id="group-title-edit" aria-label="묶음 제목 수정">${pencilIcon}</button></div><select id="group-theme" class="group-theme-select" aria-label="묶음 테마"><option value="" disabled ${initialTheme?'':'selected'}>${esc(themeIds.map(id=>theme(id).name).join(' · '))}</option>${THEMES.map(t=>`<option value="${t.id}" ${initialTheme===t.id?'selected':''}>${t.name}</option>`).join('')}</select><div class="group-history">${items.map(r=>recordRow(r)).join('')}</div>`);
+  showDialog(`${closeButton}<div class="group-title-line"><h2><span id="group-title-label">${esc(record.group||'해낸 일')}</span><input id="group-title-input" aria-label="묶음 제목" maxlength="80" value="${esc(record.group||'')}" hidden> <span class="count">${items.length}</span></h2><button id="group-title-edit" aria-label="묶음 제목 수정">${pencilIcon}</button></div><fieldset id="group-theme" class="theme-picker"><legend class="sr-only">묶음 테마</legend>${THEMES.map(t=>`<label style="--accent:${t.color}"><input type="radio" name="group-theme" value="${t.id}" ${initialTheme===t.id?'checked':''}><span>${themeIcons[t.id]}${t.name}</span></label>`).join('')}</fieldset><div class="group-history">${items.map(r=>recordRow(r)).join('')}</div>`);
   const input=dialog.querySelector('#group-title-input'),label=dialog.querySelector('#group-title-label'),select=dialog.querySelector('#group-theme');
   let storedName=record.group||'',storedTheme=initialTheme,pending=Promise.resolve(true);
-  const paintTheme=()=>{select.style.setProperty('--accent',select.value==='money'?'var(--flower-orange)':theme(select.value)?.color||'var(--muted)');};paintTheme();
+  const paintTheme=()=>{select.querySelectorAll('input').forEach(input=>{input.checked=input.value===storedTheme;});};
   const patch=async values=>update(s=>{for(const id of ids){const r=s.records.find(r=>r.id===id);if(!r)throw new Error('기록이 변경됐어요. 다시 열어주세요.');Object.assign(r,values);}});
   const saveTitle=()=>pending=pending.then(async()=>{
     if(input.hidden)return true;
@@ -89,11 +89,13 @@ function groupDetail(id) {
   groupEditor={saveTitle};
   dialog.querySelector('#group-title-edit').onclick=()=>{input.hidden=false;label.hidden=true;input.focus();input.select();};
   input.onkeydown=event=>{if(event.key==='Enter'&&!event.isComposing){event.preventDefault();void saveTitle();}};
-  select.onchange=()=>{
-    const value=select.value;select.disabled=true;
+  select.onchange=event=>{
+    const value=event.target.value;
+    if(!THEMES.some(t=>t.id===value)||value===storedTheme)return;
+    select.disabled=true;
     pending=pending.then(async()=>{
       const ok=await patch({themes:[value]});
-      if(ok){storedTheme=value;filter='';render();}else select.value=storedTheme;
+      if(ok){storedTheme=value;filter='';render();}
       paintTheme();select.disabled=false;return ok;
     });
   };
