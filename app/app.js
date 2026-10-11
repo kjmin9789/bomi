@@ -5,7 +5,7 @@ const app=document.querySelector('#app'), dialog=document.querySelector('#dialog
 let state=emptyState(), lastRaw=null, storageBlocked=false;
 try { lastRaw=localStorage.getItem(KEY); if(lastRaw) state=validateState(JSON.parse(lastRaw)); }
 catch { storageBlocked=true; }
-let demo=false, demoData=demoState(), page='today', selected=today(), month=today().slice(0,7), filter='', reviewDate=weekStart(today()), timer;
+let demo=false, demoData=demoState(), page='today', selected=today(), month=today().slice(0,7), filter='', reviewDate=weekStart(today()), timer, codexTimer;
 const data=()=>demo?demoData:state;
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const theme=id=>ALL_THEMES.find(t=>t.id===id);
@@ -50,7 +50,7 @@ function daily() {
   const rest=data().rest.includes(selected), isToday=selected===today();
   const nudgeTheme=(total?THEMES.find((_,i)=>flags[i]):THEMES.find((_,i)=>!flags[i]))||THEMES[0];
   const future=data().futures[nudgeTheme.id];
-  return `<div class="page-heading"><div><h1 class="date-heading"><time datetime="${selected}">${selected.replaceAll('-','.')} ${new Intl.DateTimeFormat('ko-KR',{weekday:'long',timeZone:'UTC'}).format(new Date(`${selected}T12:00:00Z`))}</time></h1>${isToday?'':'<p>이날 한 일을 확인하고, 빠진 기록을 추가해요.</p>'}</div><button class="primary" data-action="record">＋ 한 일 기록하기</button></div><div class="dashboard"><div class="daily-column"><section class="bloom-card"><div class="bloom-head"><span class="pill">${isToday?'오늘의 꽃':'이날의 꽃'}</span><span class="quiet">${rest?'쉬어가는 날':total?`${total}단계 · ${total}개 테마 실천`:'0단계 · 아직 기록 없음'}</span></div><div class="hero-flower">${flower(flags,'',`${total}개 테마 실천`)}</div><h2>${total?'잘했어요! 해낸 일이 쌓이고 있어요.':rest?'오늘은 편하게 쉬어요.':'이미 한 일이 있나요?'}</h2><p>${total?'아래 도장에서 어떤 일을 했는지 확인해요.':rest?'나중에 기록하고 싶을 때 다시 와도 돼요.':'한 줄이면 돼요. 한 일 기록하기를 눌러보세요.'}</p><div class="stamps">${THEMES.map((t,i)=>`<button class="stamp ${flags[i]?'done':''} ${filter===t.id?'active':''}" data-action="filter" data-theme="${t.id}" style="--accent:${t.color}" aria-pressed="${filter===t.id}" aria-label="${t.name} ${flags[i]?'완료':'기록 없음'}, 기록 보기"><span class="stamp-shape">${flags[i]?'✓':t.mark}</span><strong>${t.name}</strong><small>${flags[i]?'해냈어요':'아직 기록 없음'}</small></button>`).join('')}</div></section>
+  return `<div class="page-heading"><div><h1 class="date-heading"><time datetime="${selected}">${selected.replaceAll('-','.')} ${new Intl.DateTimeFormat('ko-KR',{weekday:'long',timeZone:'UTC'}).format(new Date(`${selected}T12:00:00Z`))}</time></h1>${isToday?'':'<p>이날 한 일을 확인하고, 빠진 기록을 추가해요.</p>'}</div><div class="heading-actions"><button class="primary" data-action="codex">${isToday?'오늘':'이날'} 한 일 가져오기</button><button class="text-button" data-action="record">직접 기록하기</button></div></div><div class="dashboard"><div class="daily-column"><section class="bloom-card"><div class="bloom-head"><span class="pill">${isToday?'오늘의 꽃':'이날의 꽃'}</span><span class="quiet">${rest?'쉬어가는 날':total?`${total}단계 · ${total}개 테마 실천`:'0단계 · 아직 기록 없음'}</span></div><div class="hero-flower">${flower(flags,'',`${total}개 테마 실천`)}</div><h2>${total?'잘했어요! 해낸 일이 쌓이고 있어요.':rest?'오늘은 편하게 쉬어요.':'이미 한 일이 있나요?'}</h2><p>${total?'아래 도장에서 어떤 일을 했는지 확인해요.':rest?'나중에 기록하고 싶을 때 다시 와도 돼요.':'Codex에서 가져오거나 직접 기록해보세요.'}</p><div class="stamps">${THEMES.map((t,i)=>`<button class="stamp ${flags[i]?'done':''} ${filter===t.id?'active':''}" data-action="filter" data-theme="${t.id}" style="--accent:${t.color}" aria-pressed="${filter===t.id}" aria-label="${t.name} ${flags[i]?'완료':'기록 없음'}, 기록 보기"><span class="stamp-shape">${flags[i]?'✓':t.mark}</span><strong>${t.name}</strong><small>${flags[i]?'해냈어요':'아직 기록 없음'}</small></button>`).join('')}</div></section>
     ${isToday?`<section class="nudge"><span class="nudge-symbol">✦</span><div><span class="eyebrow">이것부터 해볼까요?</span><h3>${rest?'오늘은 편하게 쉬어가요.':total?'하나 해냈네요. 잘했어요!':nudgeTheme.prompt}</h3><p>${rest?'다시 시작하고 싶을 때 돌아오세요.':total?'더 하지 않아도 괜찮아요. 해낸 일을 확인해보세요.':future?esc(future):'이것 하나만 해봐요. 끝나면 한 줄로 기록해요.'}</p>${!rest&&!total&&!(data().snoozed[today()]>Date.now())?`<div class="inline-actions"><button data-action="start" data-theme="${nudgeTheme.id}">지금 시작 ↗</button><button data-action="snooze">나중에</button></div>`:''}</div></section>`:''}
     <section class="card records"><div class="section-top"><h2>${filter?theme(filter).name+'의 기록':'이날 해낸 일'} <span class="count">${records.length}</span></h2>${filter?'<button class="text-button" data-action="clear-filter">전체 보기</button>':''}<button class="text-button" data-action="rest">${rest?'쉬어감 취소':'오늘은 쉬어가기'}</button></div>${recordsList(records)}</section></div><aside>${calendar()}</aside></div>`;
 }
@@ -62,13 +62,13 @@ function reviewPage() {
   return `<div class="page-heading"><div><h1>이번 주에 한 일을 확인해볼까요?</h1><p>${fmt(reviewDate)} — ${fmt(shiftDate(reviewDate,6))}</p></div><div class="arrows"><button data-action="week" data-delta="-7" aria-label="이전 주">‹</button><button data-action="week" data-delta="7" aria-label="다음 주" ${reviewDate>=weekStart(today())?'disabled':''}>›</button></div></div><section class="card weekly"><div class="weekly-flowers">${Array.from({length:7},(_,i)=>{const date=shiftDate(reviewDate,i);return `<button data-action="date" data-date="${date}" ${date>today()?'disabled':''}><span>${['월','화','수','목','금','토','일'][i]}</span>${flower(activeThemes(data().records,date))}<small>${date.slice(5).replace('-','.')}</small></button>`;}).join('')}</div><h2>${summary.days?`이번 주 ${summary.days}일 실천했어요. 잘했어요!`:'아직 이 주에 남긴 기록이 없어요.'}</h2><p>빠뜨린 일이 있다면 날짜를 눌러 추가해요.</p><div class="week-stats">${summary.themes.map(t=>`<div><i style="background:${t.color}"></i><span>${t.name}</span><strong>${t.days}일</strong></div>`).join('')}</div></section><div class="review-grid"><section class="card"><h2>이번 주에 남긴 것</h2>${summary.entries.length?`<ul class="outcomes">${summary.entries.slice().reverse().map(r=>`<li><span>${r.date.slice(5).replace('-','.')}</span><div><strong>${esc(r.text)}</strong>${r.result?`<p>${esc(r.result)}</p>`:''}</div></li>`).join('')}</ul>`:'<p class="quiet">조사와 준비, 연습도 실제로 한 일이라면 남겨주세요.</p>'}</section><form id="review-form" class="card"><h2>이번 주의 양은 어땠어요?</h2><p class="quiet">다음 주를 재촉하지 않고, 내 페이스를 알아가요.</p><fieldset class="moods"><legend class="sr-only">체감 부담</legend>${['여유 있었어','적당했어','버거웠어'].map(m=>`<label><input type="radio" name="mood" value="${m}" ${review.mood===m?'checked':''}><span>${m}</span></label>`).join('')}</fieldset><label for="review-note">남기고 싶은 이야기</label><textarea id="review-note" name="note" maxlength="2000" placeholder="잘했던 일, 버거웠던 사정, 다음에 이어가고 싶은 것…">${esc(review.note)}</textarea><button class="primary">회고 저장하기</button><p class="footnote">실제 기록을 모은 회고예요. AI 분석은 아직 연결하지 않았어요.</p></form></div>`;
 }
 function settingsPage() {
-  return `<div class="page-heading"><div><h1>기록과 알림을 설정해요.</h1><p>기록과 알림을 직접 관리해요.</p></div></div><div class="settings-grid"><section class="card"><span class="pill">이 기기에서 사용 중</span><h2>나의 기록 보관</h2><p>지금은 이 브라우저에 저장돼요. 브라우저 데이터를 지우기 전에 백업해주세요. 다른 기기와 자동으로 동기화되지는 않아요.</p><div class="inline-actions"><button class="secondary" data-action="export">기록 백업하기 ↓</button><label class="secondary file-label">백업 가져오기<input type="file" id="import-file" accept="application/json,.json"></label></div>${storageBlocked?'<p class="error">기존 저장 데이터를 읽지 못해 덮어쓰기를 막았어요. 먼저 원본을 백업해주세요.</p><button data-action="raw-export">원본 데이터 다운로드</button>':''}</section><section class="card"><h2>하루를 챙기는 알림</h2><p>로컬 버전에서는 보미가 열려 있는 동안에만 알림을 확인해요. 앱을 닫아도 오는 푸시는 아직 연결 전이에요.</p><form id="reminder-form"><label for="reminder-time">알림 받을 시각 · 한국시간</label><input type="time" id="reminder-time" name="time" value="${esc(data().reminder)}"><div class="inline-actions"><button class="primary">시각 저장</button><button type="button" data-action="reminder-off">끄기</button><button type="button" data-action="notification-test">알림 테스트</button></div></form><p class="footnote">쉬어가거나 이미 기록한 날에는 재촉하지 않아요.</p></section></div>`;
+  return `<div class="page-heading"><div><h1>기록과 알림을 설정해요.</h1><p>기록과 알림을 직접 관리해요.</p></div></div><div class="settings-grid"><section class="card"><span class="pill">이 기기에서 사용 중</span><h2>나의 기록 보관</h2><button class="text-button" data-action="codex-settings">이 컴퓨터의 Codex 연결 설정</button><p>지금은 이 브라우저에 저장돼요. 브라우저 데이터를 지우기 전에 백업해주세요. 다른 기기와 자동으로 동기화되지는 않아요.</p><div class="inline-actions"><button class="secondary" data-action="export">기록 백업하기 ↓</button><label class="secondary file-label">백업 가져오기<input type="file" id="import-file" accept="application/json,.json"></label></div>${storageBlocked?'<p class="error">기존 저장 데이터를 읽지 못해 덮어쓰기를 막았어요. 먼저 원본을 백업해주세요.</p><button data-action="raw-export">원본 데이터 다운로드</button>':''}</section><section class="card"><h2>하루를 챙기는 알림</h2><p>로컬 버전에서는 보미가 열려 있는 동안에만 알림을 확인해요. 앱을 닫아도 오는 푸시는 아직 연결 전이에요.</p><form id="reminder-form"><label for="reminder-time">알림 받을 시각 · 한국시간</label><input type="time" id="reminder-time" name="time" value="${esc(data().reminder)}"><div class="inline-actions"><button class="primary">시각 저장</button><button type="button" data-action="reminder-off">끄기</button><button type="button" data-action="notification-test">알림 테스트</button></div></form><p class="footnote">쉬어가거나 이미 기록한 날에는 재촉하지 않아요.</p></section></div>`;
 }
 function render() {
   const views={today:daily,future:futurePage,review:reviewPage,saved:()=>`<div class="page-heading"><div><h1>다음에도 꺼내볼 기록.</h1><p>다시 활용하고 싶은 결과와 배운 점을 모아두세요.</p></div></div><section class="card">${recordsList(data().records.filter(r=>r.saved).slice().reverse())}</section>`,settings:settingsPage};
   app.innerHTML=`<a class="skip" href="#main">본문으로 이동</a><aside class="sidebar"><a class="brand" href="#" data-action="nav" data-page="today">${flower(Array(THEMES.length).fill(true))}<span>보미<b>bomi</b></span></a><p class="brand-line">하나만 해도 좋아요</p><nav aria-label="주 메뉴">${[['today','✿','오늘의 보미'],['future','◈','나의 미래'],['review','▦','주간 회고'],['saved','♡','보관함'],['settings','⚙','설정']].map(([id,icon,name])=>`<button data-action="nav" data-page="${id}" class="${page===id?'current':''}" ${page===id?'aria-current="page"':''}><span>${icon}</span>${name}${id==='today'?'<i></i>':''}</button>`).join('')}</nav><div class="sidebar-bottom"><div class="small-flower">${flower([false,true,false])}</div><p>한꺼번에 말고,<br>쉬운 것 하나부터.</p><button class="demo-button" data-action="demo">${demo?'내 기록으로 돌아가기':'예시로 둘러보기 ↗'}</button><small>로컬 미리보기 · 이 브라우저에 저장</small></div></aside><div class="workspace">${demo?'<div class="banner">예시 모드예요. 아래 기록은 실제 활동이 아니며 저장되지 않아요. <button data-action="demo">내 기록으로 돌아가기</button></div>':''}${storageBlocked?'<div class="banner error">저장 데이터를 읽지 못했어요. 설정에서 원본을 백업해주세요.</div>':''}<main id="main">${views[page]()}</main></div>`;
 }
-function showDialog(html) { dialog.setAttribute('aria-label','보미 기록과 확인'); dialog.innerHTML=html; if(!dialog.open) dialog.showModal(); }
+function showDialog(html) { clearTimeout(codexTimer); delete dialog.dataset.codex; dialog.setAttribute('aria-label','보미 기록과 확인'); dialog.innerHTML=html; if(!dialog.open) dialog.showModal(); }
 const closeButton='<button type="button" class="close" data-action="close" aria-label="닫기">×</button>';
 function recordForm(id='',preferred='') {
   const record=id?data().records.find(r=>r.id===id):null;
@@ -104,6 +104,8 @@ async function action(event) {
   if(kind==='close'){dialog.close();return;}
   if(kind==='nav'){page=button.dataset.page;render();window.scrollTo({top:0});return;}
   if(kind==='demo'){demo=!demo;page='today';selected=today();month=selected.slice(0,7);filter='';render();return;}
+  if(kind==='codex'){await collectCodex();return;}
+  if(kind==='codex-settings'){await codexSettings();return;}
   if(kind==='record'){recordForm('',filter);return;}
   if(kind==='edit'){recordForm(id);return;}
   if(kind==='filter'){filter=filter===button.dataset.theme?'':button.dataset.theme;render();return;}
@@ -156,3 +158,53 @@ document.addEventListener('change',async event=>{
 window.addEventListener('storage',event=>{if(event.key===KEY){toast('다른 창의 변경이 있어요. 입력 중인 내용이 없다면 새로고침해주세요.');}});
 render();
 setInterval(reminderCheck,30000);
+
+
+async function codexApi(action,value) {
+  const response=await fetch(`/api/codex/${action}`,value===undefined?{signal:AbortSignal.timeout(15000)}:{method:'POST',headers:{'Content-Type':'application/json','X-Bomi-Request':'1'},body:JSON.stringify(value),signal:AbortSignal.timeout(50000)});
+  const result=await response.json();if(!response.ok)throw new Error(result.error||'Codex 연결을 확인해주세요.');return result;
+}
+async function codexSettings() {
+  let connected=false;try{connected=(await codexApi('status')).connected;}catch{}
+  showDialog(`${closeButton}<h2>이 컴퓨터의 Codex 연결</h2><p class="quiet">${connected?'연결된 채팅이 있어요.':'아직 연결된 채팅이 없어요.'} 정리를 맡길 Codex 채팅의 링크에 있는 ID를 입력해주세요. 이 컴퓨터에만 저장돼요.</p><form id="codex-connect"><label for="codex-thread">Codex 채팅 ID</label><input id="codex-thread" name="threadId" required placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"><p class="footnote">개인 프로젝트만 정리해요. 회사 작업은 포함하지 않아요. 다른 컴퓨터에서는 그 기기의 Codex를 별도로 연결해주세요.</p><p class="form-error" role="alert"></p><button class="primary full">연결 저장</button></form>`);
+  document.querySelector('#codex-connect').onsubmit=async event=>{event.preventDefault();const f=event.currentTarget;try{await codexApi('connect',{threadId:f.elements.threadId.value.trim()});dialog.close();toast('이 컴퓨터의 Codex 채팅을 연결했어요.');}catch{f.querySelector('.form-error').textContent='채팅 ID와 로컬 서버 연결을 확인해주세요.';}};
+}
+async function collectCodex() {
+  if(demo){toast('예시 모드를 마친 뒤 개인 작업을 가져올 수 있어요.');return;}
+  if(storageBlocked){toast('설정에서 기존 기록을 먼저 복구해주세요.');return;}
+  const date=selected;
+  showDialog(`${closeButton}<h2>Codex에 연결하고 있어요</h2><p class="quiet" role="status">이 컴퓨터의 개인 프로젝트에서 ${fmt(date)}에 한 일을 가져와요.</p>`);
+  dialog.dataset.codex='pending';
+  try {
+    let result=await codexApi('status');
+    if(!dialog.open||dialog.dataset.codex!=='pending')return;
+    if(!result.connected){await codexSettings();return;}
+    if(!result.job)result=await codexApi('collect',{date});
+    if(dialog.open&&dialog.dataset.codex==='pending')showCodexStatus(result);
+  } catch {if(dialog.open&&dialog.dataset.codex==='pending')showDialog(`${closeButton}<h2>연결 상태를 확인해주세요</h2><p>Codex 앱과 보미 로컬 서버가 실행 중인지 확인해주세요. 전달 여부가 불명확할 때는 새 요청을 자동으로 보내지 않아요.</p><button class="primary full" data-action="codex">상태 다시 확인</button>`);}
+}
+function showCodexStatus(result) {
+  const job=result.job;
+  if(!job){dialog.close();return;}
+  if(job.status==='ready'){reviewCodex(job);return;}
+  showDialog(`${closeButton}<h2>${['sending','queued'].includes(job.status)?'Codex에 정리를 요청했어요':'Codex 채팅을 확인해주세요'}</h2><p class="quiet" role="status">${esc(job.message||'개인 프로젝트의 실제 완료 내역을 확인하고 테마를 제안해요. 채팅에서 다른 작업이 진행 중이면 순서대로 처리돼요.')}</p><p class="footnote">${esc(fmt(job.date))} · 확인 전에는 기록과 꽃에 반영하지 않아요. 창을 닫아도 요청은 유지돼요.</p><div class="inline-actions"><a class="secondary" href="codex://threads/${esc(job.threadId)}">Codex 채팅 열기</a><button class="text-button" id="end-codex">이 요청 종료하기</button></div><p class="footnote">요청을 종료해도 Codex에서 진행 중인 작업은 중단되지 않아요.</p>`);
+  dialog.dataset.codex='pending';
+  document.querySelector('#end-codex').onclick=async()=>{try{await codexApi('close',{id:job.id});dialog.close();toast('보미에서 결과 기다리기를 종료했어요.');}catch{toast('연결 상태를 확인해주세요.');}};
+  codexTimer=setTimeout(async()=>{if(!dialog.open||dialog.dataset.codex!=='pending')return;try{const state=await codexApi('status');if(dialog.open&&dialog.dataset.codex==='pending')showCodexStatus(state);}catch{if(dialog.open&&dialog.dataset.codex==='pending')showDialog(`${closeButton}<h2>연결이 잠시 끊겼어요</h2><p>요청은 보존돼요. 다시 연결하면 진행 상태를 확인할 수 있어요.</p><button class="primary full" data-action="codex">상태 다시 확인</button>`);}},3000);
+}
+function reviewCodex(job) {
+  showDialog(`${closeButton}<h2>정리한 일을 확인해주세요</h2><p class="quiet">${fmt(job.date)} · ${job.records.length}개 채팅의 작업 초안이에요. 내용과 테마를 고친 뒤 실제로 한 일만 남겨주세요.</p>${job.note?`<p class="footnote">${esc(job.note)}</p>`:''}<form id="codex-review">${job.records.map((r,i)=>`<section class="codex-draft"><label><input type="checkbox" name="include" value="${i}" checked> ${esc(r.title)}</label><p class="quiet">${data().records.some(old=>old.id===r.id)?'이미 가져온 기록이에요. 확인하면 아래 내용으로 갱신돼요.':'새 기록'}</p><label for="codex-text-${i}">실제로 한 일</label><textarea id="codex-text-${i}" name="text-${i}" maxlength="1000">${esc(r.text)}</textarea><label for="codex-result-${i}">남은 결과</label><input id="codex-result-${i}" name="result-${i}" maxlength="1000" value="${esc(r.result)}"><fieldset class="theme-picker"><legend>제안된 테마 · 수정할 수 있어요</legend>${THEMES.map(t=>`<label><input type="checkbox" name="themes-${i}" value="${t.id}" ${r.themes.includes(t.id)?'checked':''}><span>${t.name}</span></label>`).join('')}</fieldset><details><summary>정리 근거 보기</summary><p class="footnote">${esc(r.evidence)}</p><a href="codex://threads/${esc(r.threadId)}">원래 Codex 채팅 열기</a></details></section>`).join('')}${job.records.length?'':'<p class="empty">확인할 수 있는 완료 내역이 없어요. 활동을 하지 않았다는 뜻은 아니에요.</p>'}<p class="form-error" role="alert"></p><div class="inline-actions">${job.records.length?'<button class="primary">선택한 일 확인하고 기록하기</button>':''}<button type="button" id="discard-codex" class="secondary">이번 초안 닫기</button></div></form>`);
+  document.querySelector('#discard-codex').onclick=async()=>{try{await codexApi('close',{id:job.id});dialog.close();}catch{toast('연결 상태를 확인해주세요.');}};
+  document.querySelector('#codex-review').onsubmit=async event=>{
+    event.preventDefault();const f=event.currentTarget,fd=new FormData(f);
+    try {
+      const records=fd.getAll('include').map(value=>{const i=Number(value),draft=job.records[i];return validateRecord({...draft,text:fd.get(`text-${i}`),result:fd.get(`result-${i}`),themes:fd.getAll(`themes-${i}`),saved:data().records.find(r=>r.id===draft.id)?.saved||false});});
+      if(!records.length)throw new Error('실제로 한 일을 한 개 이상 선택해주세요.');
+      if(!update(s=>{for(const record of records){const index=s.records.findIndex(r=>r.id===record.id);if(index<0)s.records.push(record);else s.records[index]=record;}}))return;
+      // Local records are committed first; a failed acknowledgement remains safely repeatable by stable IDs.
+      let acknowledged=true;try{await codexApi('close',{id:job.id});}catch{acknowledged=false;}
+      selected=job.date;month=selected.slice(0,7);page='today';filter='';render();
+      showDialog(`${closeButton}<div class="celebration">${flower(activeThemes(data().records,selected),'pop')}<h2>해낸 일 ${records.length}개를 기록했어요.</h2><p>확인한 테마를 도장과 꽃에 반영했어요.</p>${acknowledged?'':'<p class="footnote">기록은 저장했지만 요청 종료 확인이 지연됐어요. 다시 확인해도 같은 기록은 중복되지 않아요.</p>'}<button class="primary full" data-action="close">내 기록 보기</button></div>`);
+    } catch(error){f.querySelector('.form-error').textContent=error.message;}
+  };
+}
