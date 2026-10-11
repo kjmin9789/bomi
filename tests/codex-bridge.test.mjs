@@ -57,3 +57,19 @@ test('로컬 API는 외부 Origin·잘못된 Host·단순 폼 전송 차단',asy
  assert.equal((await post(good,JSON.stringify({date}))).status,200);assert.equal(calls,1);
  assert.equal((await fetch(`${base}/.data/codex/request.json`)).status,404);
 });
+
+test('과거 날짜 요청과 완료 초안은 선택한 한국 날짜를 유지한다',async t=>{
+ const past='2026-09-20';let message;
+ const {directory,bridge}=await fixture(t,async(id,text)=>{message=text;});
+ const {job}=await bridge.collect(past);
+ assert.equal(job.date,past);
+ assert.ok(message.includes(`선택한 날짜는 ${past}`));
+ assert.match(message,/이전 페이지 커서/);
+ assert.ok(message.includes(`${past} 00:00 이상 다음 날 00:00 미만`));
+ const request=JSON.parse(await readFile(join(directory,`${job.id}.request.json`)));
+ assert.equal(request.date,past);assert.equal(request.timezone,'Asia/Seoul');
+ await writeFile(join(directory,`${job.id}.result.json`),JSON.stringify(draft(job)));
+ const ready=await bridge.status();
+ assert.equal(ready.job.status,'ready');assert.equal(ready.job.records[0].date,past);
+ assert.throws(()=>validateDraft({...draft(job),date},job));
+});
