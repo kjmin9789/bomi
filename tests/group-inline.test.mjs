@@ -30,7 +30,7 @@ test('개별 수정은 입력된 내용만 바꾸고 날짜·테마·묶음과 �
  const context=vm.createContext({document:{addEventListener:(_,handler)=>submit=handler},FormData:class {get(key){return {text:'수정한 내용',summary:'수정 요약',date:'2026-10-01',group:'다른 묶음',result:'변경 시도'}[key]}getAll(){return ['career']}},data:()=>({records:[old]}),selected:'2026-10-12',today:()=> '2026-10-12',validateRecord:r=>r,saveRecord:r=>reviewed=r});
  const start=source.indexOf("document.addEventListener('submit',");
  vm.runInContext(source.slice(start,source.indexOf("document.addEventListener('change',",start)),context);
- await submit({preventDefault(){},target:{id:'record-form',dataset:{id:'a'}}});
+ await submit({preventDefault(){},target:{id:'record-form',dataset:{id:'a'},querySelector:()=>null}});
  assert.equal(reviewed.text,'수정한 내용');assert.equal(reviewed.summary,'수정 요약');
  for(const key of ['date','themes','group','result','saved'])assert.deepEqual(reviewed[key],old[key]);
 });
@@ -40,7 +40,7 @@ test('새 기록은 선택한 날짜와 처음 고른 테마를 사용한다',as
  const context=vm.createContext({document:{addEventListener:(_,handler)=>submit=handler},FormData:class {get(key){return {text:'걷기',summary:'산책했다',group:'운동'}[key]}getAll(){return ['health']}},data:()=>({records:[]}),crypto:{randomUUID:()=> 'new'},selected:'2026-10-10',today:()=> '2026-10-12',validateRecord:r=>r,saveRecord:r=>reviewed=r});
  const start=source.indexOf("document.addEventListener('submit',");
  vm.runInContext(source.slice(start,source.indexOf("document.addEventListener('change',",start)),context);
- await submit({preventDefault(){},target:{id:'record-form',dataset:{id:''}}});
+ await submit({preventDefault(){},target:{id:'record-form',dataset:{id:''},querySelector:()=>null}});
  assert.equal(reviewed.date,'2026-10-10');assert.equal(reviewed.themes[0],'health');assert.equal(reviewed.result,'');
 });
 
@@ -77,4 +77,16 @@ test('자동 갱신은 새 서버 기록을 반영하되 편집 중이거나 저
  blocked=true;await context.refreshCloudRecords();assert.equal(rendered,1);
  blocked=false;const race=context.refreshCloudRecords();cloud.revision=3;resolve({revision:2,state:{records:[]}});await race;
  assert.equal(cloud.revision,3);assert.equal(rendered,1);
+});
+
+test('저장 버튼은 변경 시 활성화되고 원래 값으로 복원하면 다시 비활성화된다',()=>{
+ const record={id:'a',summary:'요약',text:'원문',themes:['career']};
+ const values={summary:'요약',text:'원문'},handlers={},save={disabled:true},cancel={};let returned;
+ const form={querySelector:s=>s==='#save-record'?save:cancel,addEventListener:(name,fn)=>handlers[name]=fn};
+ const context=vm.createContext({data:()=>({records:[record]}),THEMES:[],ALL_THEMES:[],showDialog(){},closeButton:'',esc:String,dialog:{querySelector:()=>form},groupDetail:id=>returned=id,FormData:class {[Symbol.iterator](){return Object.entries(values)[Symbol.iterator]();}}});
+ vm.runInContext(source.slice(source.indexOf('function recordForm('),source.indexOf('async function saveRecord(')),context);
+ context.recordForm('a');assert.equal(save.disabled,true);
+ values.text='수정';handlers.input();assert.equal(save.disabled,false);
+ values.text='원문';handlers.input();assert.equal(save.disabled,true);
+ cancel.onclick();assert.equal(returned,'a');assert.equal(record.text,'원문');
 });

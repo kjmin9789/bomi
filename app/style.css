@@ -64,3 +64,6 @@ dialog > .group-tags{justify-content:flex-start;margin:0 0 12px}.record-mark svg
 #group-title-editor input{padding-right:70px;font-size:20px}
 #group-title-save{position:absolute;right:8px;top:50%;transform:translateY(-50%);padding:8px 12px;font-size:14px;font-weight:650;color:var(--primary);border-radius:6px}
 #group-title-save:hover{background:var(--primary-tint)}
+
+.record-form-actions>button{flex:1}
+#save-record:disabled{opacity:.4;cursor:not-allowed}

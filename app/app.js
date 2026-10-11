@@ -151,7 +151,14 @@ function recordForm(id='',preferred='') {
   const record=id?data().records.find(r=>r.id===id):null;
   if(id&&!record)return;
   const choices=[...THEMES,...ALL_THEMES.filter(t=>record?.themes.includes(t.id)&&!THEMES.some(active=>active.id===t.id))];
-  showDialog(`${closeButton}<h2>${record?'기록 다듬기':'한 일을 한 줄로 적어볼까요?'}</h2><form id="record-form" data-id="${esc(id)}">${record?'':`<fieldset class="theme-picker"><legend>관련된 테마를 직접 골라주세요</legend>${choices.map(t=>`<label style="--accent:${t.color}"><input type="checkbox" name="themes" value="${t.id}" ${(record?.themes||[preferred]).includes(t.id)?'checked':''}><span>${themeIcons[t.id]||esc(t.mark)}${t.name}</span></label>`).join('')}</fieldset>`}<label for="record-summary">목록에 보일 한 줄 <span class="quiet">선택</span></label><input id="record-summary" name="summary" maxlength="80" placeholder="예: 블로그 글을 임시저장했다" value="${esc(record?.summary||'')}"><label for="record-text">실제로 한 일 · 상세</label><textarea id="record-text" name="text" maxlength="1000" required placeholder="예: 준비하던 글의 제목을 다듬었어">${esc(record?.text||'')}</textarea>${record?'':`<label for="record-group">작업 묶음 <span class="quiet">선택</span></label><input id="record-group" name="group" maxlength="80">`}<div class="form-error" role="alert"></div><button class="primary full">저장</button></form>`);
+  showDialog(`${closeButton}<h2>${record?'기록 다듬기':'한 일을 한 줄로 적어볼까요?'}</h2><form id="record-form" data-id="${esc(id)}">${record?'':`<fieldset class="theme-picker"><legend>관련된 테마를 직접 골라주세요</legend>${choices.map(t=>`<label style="--accent:${t.color}"><input type="checkbox" name="themes" value="${t.id}" ${(record?.themes||[preferred]).includes(t.id)?'checked':''}><span>${themeIcons[t.id]||esc(t.mark)}${t.name}</span></label>`).join('')}</fieldset>`}<label for="record-summary">목록에 보일 한 줄 <span class="quiet">선택</span></label><input id="record-summary" name="summary" maxlength="80" placeholder="예: 블로그 글을 임시저장했다" value="${esc(record?.summary||'')}"><label for="record-text">실제로 한 일 · 상세</label><textarea id="record-text" name="text" maxlength="1000" required placeholder="예: 준비하던 글의 제목을 다듬었어">${esc(record?.text||'')}</textarea>${record?'':`<label for="record-group">작업 묶음 <span class="quiet">선택</span></label><input id="record-group" name="group" maxlength="80">`}<div class="form-error" role="alert"></div><div class="inline-actions record-form-actions"><button type="button" class="secondary" id="cancel-record">취소</button><button class="primary" id="save-record" disabled>저장</button></div></form>`);
+  const form=dialog.querySelector('#record-form'),save=form.querySelector('#save-record');
+  const snapshot=()=>JSON.stringify([...new FormData(form)]);
+  const original=snapshot();
+  const updateSave=()=>{save.disabled=snapshot()===original;};
+  form.addEventListener('input',updateSave);
+  form.addEventListener('change',updateSave);
+  form.querySelector('#cancel-record').onclick=()=>{if(record)groupDetail(record.id);else void closeDialog();};
 }
 async function saveRecord(record) {
     if(saving)return;
@@ -213,6 +220,7 @@ document.addEventListener('click',action);
 document.addEventListener('submit',async event=>{
   const form=event.target;event.preventDefault();const fd=new FormData(form);
   if(form.id==='record-form') {
+    if(form.querySelector('#save-record')?.disabled)return;
     try { const old=data().records.find(r=>r.id===form.dataset.id);const record=validateRecord({id:old?.id||crypto.randomUUID(),date:old?.date||selected,text:fd.get('text'),summary:fd.get('summary'),group:old?old.group:fd.get('group'),result:old?.result||'',themes:old?old.themes:fd.getAll('themes'),saved:old?.saved||false},today(),!!old);await saveRecord(record); }
     catch(error){form.querySelector('.form-error').textContent=error.message;}return;
   }
