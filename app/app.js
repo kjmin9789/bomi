@@ -68,25 +68,39 @@ function groupItems(id) {
   const record=data().records.find(r=>r.id===id);if(!record)return [];
   return newestRecords(data().records.filter(r=>(r.group||'')===(record.group||'')&&(page==='saved'?r.saved:r.date===selected&&(!filter||r.themes.includes(filter)))));
 }
-function editGroup(id) {
+let groupEditor=null;
+const pencilIcon='<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" d="M15.9888 3.82177C17.1457 2.66488 19.0213 2.66488 20.1782 3.82177C21.3351 4.97866 21.3351 6.85434 20.1782 8.01122L7.55327 20.6362C7.38448 20.805 7.15557 20.8998 6.91687 20.8998H4.00022C3.50316 20.8998 3.10022 20.4969 3.10022 19.9998V17.0832C3.10022 16.8445 3.19504 16.6155 3.36382 16.4468L15.9888 3.82177ZM18.9054 5.09456C18.4515 4.64062 17.7155 4.64062 17.2616 5.09456L4.90021 17.456V19.0998H6.54408L18.9054 6.73843C19.3594 6.28449 19.3594 5.5485 18.9054 5.09456Z" fill="currentColor"/></svg>';
+function groupDetail(id) {
   const items=groupItems(id);if(!items.length)return;
-  const latest=items[0],originalThemes=[...new Set(items.flatMap(r=>r.themes))];
-  const choices=ALL_THEMES.filter(t=>THEMES.includes(t)||originalThemes.includes(t.id));
-  showDialog(`${closeButton}<h2>묶음 수정</h2><form id="group-form"><label for="group-name">묶음 제목</label><input id="group-name" name="group" maxlength="80" value="${esc(latest.group||'')}"><label for="group-summary">목록에 보일 최신 기록 한 줄</label><input id="group-summary" name="summary" maxlength="80" value="${esc(latest.summary||'')}" placeholder="비워두면 원래 기록을 표시해요"><fieldset class="theme-picker"><legend>테마 · 변경하면 이 묶음의 ${items.length}개 기록에 적용</legend>${choices.map(t=>`<label><input type="checkbox" name="themes" value="${t.id}" ${originalThemes.includes(t.id)?'checked':''}><span>${t.name}</span></label>`).join('')}</fieldset><p class="form-error" role="alert"></p><button class="primary">저장</button></form>`);
-  document.querySelector('#group-form').onsubmit=async event=>{
-    event.preventDefault();event.stopPropagation();const form=event.currentTarget,fd=new FormData(form),themes=fd.getAll('themes');
-    const themesChanged=[...themes].sort().join()!==[...originalThemes].sort().join();
-    try {
-      const changes=items.map(r=>validateRecord({...r,group:fd.get('group'),...(r.id===latest.id?{summary:fd.get('summary')}:{}),themes:themesChanged?themes:r.themes},today(),true));
-      if(!await update(s=>{for(const change of changes){const r=s.records.find(r=>r.id===change.id);if(!r)throw new Error('기록이 변경됐어요. 다시 열어주세요.');r.group=change.group;if(r.id===latest.id)r.summary=change.summary;if(themesChanged)r.themes=change.themes;}}))return;
-      filter='';render();groupDetail(latest.id);toast('묶음을 수정했어요.');
-    } catch(error){form.querySelector('.form-error').textContent=error.message;}
+  const record=items[0],ids=new Set(items.map(r=>r.id));
+  const themeIds=[...new Set(items.flatMap(r=>r.themes))],initialTheme=themeIds.length===1&&THEMES.some(t=>t.id===themeIds[0])?themeIds[0]:'';
+  showDialog(`${closeButton}<div class="group-title-line"><h2><span id="group-title-label">${esc(record.group||'해낸 일')}</span><input id="group-title-input" aria-label="묶음 제목" maxlength="80" value="${esc(record.group||'')}" hidden> <span class="count">${items.length}</span></h2><button id="group-title-edit" aria-label="묶음 제목 수정">${pencilIcon}</button></div><select id="group-theme" class="group-theme-select" aria-label="묶음 테마"><option value="" disabled ${initialTheme?'':'selected'}>${esc(themeIds.map(id=>theme(id).name).join(' · '))}</option>${THEMES.map(t=>`<option value="${t.id}" ${initialTheme===t.id?'selected':''}>${t.name}</option>`).join('')}</select><div class="group-history">${items.map(r=>recordRow(r)).join('')}</div>`);
+  const input=dialog.querySelector('#group-title-input'),label=dialog.querySelector('#group-title-label'),select=dialog.querySelector('#group-theme');
+  let storedName=record.group||'',storedTheme=initialTheme,pending=Promise.resolve(true);
+  const paintTheme=()=>{select.style.setProperty('--accent',select.value==='money'?'var(--flower-orange)':theme(select.value)?.color||'var(--muted)');};paintTheme();
+  const patch=async values=>update(s=>{for(const id of ids){const r=s.records.find(r=>r.id===id);if(!r)throw new Error('기록이 변경됐어요. 다시 열어주세요.');Object.assign(r,values);}});
+  const saveTitle=()=>pending=pending.then(async()=>{
+    if(input.hidden)return true;
+    const name=input.value.trim();input.disabled=true;
+    const ok=name===storedName||await patch({group:name});input.disabled=false;
+    if(!ok){input.focus();return false;}
+    storedName=name;label.textContent=name||'해낸 일';input.hidden=true;label.hidden=false;render();return true;
+  });
+  groupEditor={saveTitle};
+  dialog.querySelector('#group-title-edit').onclick=()=>{input.hidden=false;label.hidden=true;input.focus();input.select();};
+  input.onkeydown=event=>{if(event.key==='Enter'&&!event.isComposing){event.preventDefault();void saveTitle();}};
+  select.onchange=()=>{
+    const value=select.value;select.disabled=true;
+    pending=pending.then(async()=>{
+      const ok=await patch({themes:[value]});
+      if(ok){storedTheme=value;filter='';render();}else select.value=storedTheme;
+      paintTheme();select.disabled=false;return ok;
+    });
   };
 }
-function groupDetail(id) {
-  const record=data().records.find(r=>r.id===id);if(!record)return;
-  const items=groupItems(id);
-  showDialog(`${closeButton}<h2>${esc(record.group||'해낸 일')} <span class="count">${items.length}</span></h2>${groupTags(items)}<button class="text-button" data-action="edit-group" data-id="${esc(id)}">묶음 수정</button><div class="group-history">${items.map(r=>recordRow(r)).join('')}</div>`);
+async function closeDialog() {
+  if(groupEditor){if(!await groupEditor.saveTitle())return;groupEditor=null;}
+  if(!saving)dialog.close();
 }
 function daily() {
   const flags=activeThemes(data().records,selected), total=flags.filter(Boolean).length;
@@ -122,10 +136,12 @@ function outsideDialog(event) {
 dialog.addEventListener('pointerdown',event=>{backdropPress=outsideDialog(event);});
 dialog.addEventListener('pointercancel',()=>{backdropPress=false;});
 dialog.addEventListener('click',event=>{
-  if(backdropPress&&outsideDialog(event)&&!saving)dialog.close();
+  if(backdropPress&&outsideDialog(event))void closeDialog();
   backdropPress=false;
 });
-function showDialog(html) { clearTimeout(codexTimer); delete dialog.dataset.codex; dialog.setAttribute('aria-label','보미 기록과 확인'); dialog.innerHTML=html; if(!dialog.open) dialog.showModal(); }
+dialog.addEventListener('cancel',event=>{event.preventDefault();void closeDialog();});
+dialog.addEventListener('close',()=>{if(groupEditor){const editor=groupEditor;void editor.saveTitle().then(ok=>{if(groupEditor!==editor)return;if(ok)groupEditor=null;else dialog.showModal();});}});
+function showDialog(html) { groupEditor=null; clearTimeout(codexTimer); delete dialog.dataset.codex; dialog.setAttribute('aria-label','보미 기록과 확인'); dialog.innerHTML=html; if(!dialog.open) dialog.showModal(); }
 const closeButton='<button type="button" class="close" data-action="close" aria-label="닫기">×</button>';
 function recordForm(id='',preferred='') {
   const record=id?data().records.find(r=>r.id===id):null;
@@ -159,15 +175,15 @@ async function reminderCheck() {
 async function action(event) {
   const button=event.target.closest('[data-action]');if(!button)return;
   event.preventDefault();const kind=button.dataset.action,id=button.dataset.id;
+  if(kind==='close'){await closeDialog();return;}
+  if(groupEditor&&!await groupEditor.saveTitle())return;
   if(saving){toast('저장 중이에요. 잠시 기다려주세요.');return;}
   if(kind.startsWith('cloud-')){await cloudAction(kind);return;}
-  if(kind==='close'){dialog.close();return;}
   if(kind==='nav'){page=button.dataset.page;render();window.scrollTo({top:0});return;}
   if(kind==='demo'){demo=!demo;page='today';selected=today();month=selected.slice(0,7);filter='';render();return;}
   if(kind==='codex'){await collectCodex();return;}
   if(kind==='codex-settings'){await codexSettings();return;}
   if(kind==='record'){recordForm('',filter);return;}
-  if(kind==='edit-group'){editGroup(id);return;}
   if(kind==='group'){groupDetail(id);return;}
   if(kind==='edit'){recordForm(id);return;}
   if(kind==='filter'){filter=filter===button.dataset.theme?'':button.dataset.theme;render();return;}
