@@ -26,3 +26,5 @@
 !/app/assets/bomi-logo.png
 !/codex-bridge.mjs
 !/tests/codex-bridge.test.mjs
+
+!/THIRD_PARTY_NOTICES.md
