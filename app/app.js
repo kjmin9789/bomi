@@ -52,15 +52,15 @@ function calendar() {
     return `<button class="day ${date===selected?'selected':''} ${date===today()?'is-today':''}" data-action="date" data-date="${date}" ${future?'disabled':''} aria-pressed="${date===selected}" aria-label="${esc(fmt(date))}, ${n?names+' 실천':rest?'쉬어감':'기록 없음'}"><span>${i+1}</span>${flower(flags)}${rest?'<small class="rest-dot" title="쉬어감">◡</small>':''}</button>`;
   }).join('')}</div><div class="calendar-foot"><span><i class="tiny-dot"></i>오늘</span><span>회색은 실천 기록이 없는 날이에요.</span></div></section>`;
 }
-function recordRow(r,action='detail') {
-  return `<button class="record record-open" data-action="${action}" data-id="${esc(r.id)}" aria-label="${esc(r.summary||r.text)} · ${action==='group'?'묶음 내역 보기':'상세 보기'}"><span class="record-mark" aria-hidden="true">${stampCheck}</span><span class="record-body"><strong class="record-title">${esc(r.summary||r.text)}</strong></span><span class="quiet" aria-hidden="true">›</span></button>`;
+function recordRow(r) {
+  return `<details class="record-disclosure"><summary><strong class="record-title">${esc(r.summary||r.text)}</strong><span class="record-chevron" aria-hidden="true">⌄</span></summary><div class="record-expanded"><p class="quiet">${fmt(r.date)}</p><div class="chips">${chips(r.themes)}</div><p>${esc(r.text)}</p>${r.result?`<p class="quiet">${esc(r.result)}</p>`:''}<div class="inline-actions"><button class="primary" data-action="edit" data-id="${esc(r.id)}">수정</button><button class="secondary" data-action="save-tip" data-id="${esc(r.id)}" aria-pressed="${r.saved}">${r.saved?'♥ 보관 중':'♡ 다시 볼 기록'}</button><button class="text-button" data-action="delete" data-id="${esc(r.id)}">삭제</button></div></div></details>`;
 }
 function groupTags(items) {
   return `<span class="group-tags">${[...new Set(items.flatMap(r=>r.themes))].map(id=>`<span class="pill" data-theme="${esc(id)}" style="--accent:${id==='money'?'var(--flower-orange)':theme(id).color}">${esc(theme(id).name)}</span>`).join('')}</span>`;
 }
 function recordsList(records) {
   if(!records.length) return `<div class="empty"><span>아직 기록이 없어요.</span><p>이미 한 일이 있다면 한 줄만 적어보세요.</p></div>`;
-  return sortedWorkGroups(records).map(([name,items])=>`<section class="work-group"><button class="work-group-open" data-action="group" data-id="${esc(items[0].id)}" aria-label="${esc(name||'해낸 일')} ${items.length}개 · 묶음 내역 보기"><span class="work-group-heading"><strong class="work-group-title">${esc(name||'해낸 일')} <span class="count">${items.length}</span></strong>${groupTags(items)}</span><span class="record group-preview"><span class="record-mark" aria-hidden="true">${stampCheck}</span><span class="record-body"><strong class="record-title">${esc(items[0].summary||items[0].text)}</strong></span><span class="quiet" aria-hidden="true">›</span></span></button></section>`).join('');
+  return sortedWorkGroups(records).map(([name,items])=>`<section class="work-group"><button class="work-group-open" data-action="group" data-id="${esc(items[0].id)}" aria-label="${esc(name||'해낸 일')} ${items.length}개 · 묶음 내역 보기"><span class="work-group-heading"><strong class="work-group-title">${esc(name||'해낸 일')} <span class="count">${items.length}</span></strong>${groupTags(items)}</span><span class="record group-preview"><span class="record-body"><strong class="record-title">${esc(items[0].summary||items[0].text)}</strong></span><span class="quiet" aria-hidden="true">›</span></span></button></section>`).join('');
 }
 function groupItems(id) {
   const record=data().records.find(r=>r.id===id);if(!record)return [];
@@ -125,10 +125,6 @@ dialog.addEventListener('click',event=>{
 });
 function showDialog(html) { clearTimeout(codexTimer); delete dialog.dataset.codex; dialog.setAttribute('aria-label','보미 기록과 확인'); dialog.innerHTML=html; if(!dialog.open) dialog.showModal(); }
 const closeButton='<button type="button" class="close" data-action="close" aria-label="닫기">×</button>';
-function recordDetail(id) {
-  const r=data().records.find(r=>r.id===id);if(!r)return;
-  showDialog(`${closeButton}<button class="text-button" data-action="group" data-id="${esc(id)}">‹ 묶음 내역</button><h2>${esc(r.summary||'해낸 일')}</h2><p class="quiet">${fmt(r.date)}</p><div class="chips">${chips(r.themes)}</div><div class="preview-record"><h3>${esc(r.text)}</h3>${r.result?`<p>${esc(r.result)}</p>`:''}</div><div class="inline-actions"><button class="primary" data-action="edit" data-id="${esc(id)}">수정</button><button class="secondary" data-action="save-tip" data-id="${esc(id)}" aria-pressed="${r.saved}">${r.saved?'♥ 보관 중':'♡ 다시 볼 기록'}</button><button class="text-button" data-action="delete" data-id="${esc(id)}">삭제</button></div>`);
-}
 function recordForm(id='',preferred='') {
   const record=id?data().records.find(r=>r.id===id):null;
   if(id&&!record)return;
@@ -171,7 +167,6 @@ async function action(event) {
   if(kind==='record'){recordForm('',filter);return;}
   if(kind==='edit-group'){editGroup(id);return;}
   if(kind==='group'){groupDetail(id);return;}
-  if(kind==='detail'){recordDetail(id);return;}
   if(kind==='edit'){recordForm(id);return;}
   if(kind==='filter'){filter=filter===button.dataset.theme?'':button.dataset.theme;render();return;}
   if(kind==='clear-filter'){filter='';render();return;}
@@ -181,7 +176,7 @@ async function action(event) {
   if(kind==='rest'){if(await update(s=>{s.rest=s.rest.includes(selected)?s.rest.filter(d=>d!==selected):[...s.rest,selected];})){render();toast(data().rest.includes(selected)?'쉬어가는 날로 남겼어요. 기존 기록은 그대로예요.':'쉬어감 표시를 취소했어요.');}return;}
   if(kind==='snooze'){if(await update(s=>s.snoozed[today()]=Date.now()+60*60*1000)){render();toast('한 시간 동안 쉬어갈게요.');}return;}
   if(kind==='start'){showDialog(`${closeButton}<span class="eyebrow">한 가지면 충분해요</span><h2>${theme(button.dataset.theme).prompt}</h2><p>실제로 마친 뒤 한 줄로 남겨주세요. 시작 버튼만 눌러서는 꽃 단계가 오르지 않아요.</p><button class="primary" id="start-record">했어요, 기록할게요</button>`);document.querySelector('#start-record').onclick=()=>recordForm('',button.dataset.theme);return;}
-  if(kind==='save-tip'){if(await update(s=>{const r=s.records.find(r=>r.id===id);r.saved=!r.saved;})){render();recordDetail(id);toast('보관함을 업데이트했어요.');}return;}
+  if(kind==='save-tip'){if(await update(s=>{const r=s.records.find(r=>r.id===id);r.saved=!r.saved;})){render();const saved=data().records.find(r=>r.id===id).saved;button.setAttribute('aria-pressed',String(saved));button.textContent=saved?'♥ 보관 중':'♡ 다시 볼 기록';toast('보관함을 업데이트했어요.');}return;}
   if(kind==='delete'){
     showDialog(`${closeButton}<h2>이 기록을 삭제할까요?</h2><p>해당 테마의 마지막 기록이면 도장과 꽃 단계도 함께 바뀌어요.</p><div class="inline-actions"><button data-action="close" class="secondary">취소</button><button id="confirm-delete" class="danger">기록 삭제</button></div>`);
     document.querySelector('#confirm-delete').onclick=async()=>{if(await update(s=>s.records=s.records.filter(r=>r.id!==id))){dialog.close();render();toast('기록을 삭제했어요.');}};return;
