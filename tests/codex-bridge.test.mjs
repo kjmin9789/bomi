@@ -8,11 +8,11 @@ import {createBridge,validateDraft} from '../codex-bridge.mjs';
 import {createAppServer} from '../server.mjs';
 const threadId='00000000-0000-0000-0000-000000000001';
 const date='2026-10-10';
-const legacyDraft=job=>({requestId:job.id,date:job.date,note:'',records:[{threadId,taskKey:'turn1-note',title:'테스트 작업',text:'노트를 정리했어요',result:'참고 노트',themes:['career'],evidence:'해당 날짜의 완료 턴에서 노트 저장 확인'}]});
-const draft=job=>{const raw=legacyDraft(job);if(job.schemaVersion!==3)return raw;const {themes,...item}=raw.records[0];return {requestId:raw.requestId,date:raw.date,note:raw.note,groups:[{groupKey:'notes',title:'노트 정리',themes,items:[item]}]};};
+const legacyDraft=job=>({requestId:job.id,date:job.date,note:'',coverageComplete:true,records:[{threadId,taskKey:'turn1-note',title:'테스트 작업',text:'노트를 정리했어요',result:'참고 노트',themes:['career'],evidence:'해당 날짜의 완료 턴에서 노트 저장 확인'}]});
+const draft=job=>{const raw=legacyDraft(job);if(job.schemaVersion!==3)return raw;const {themes,...item}=raw.records[0];return {requestId:raw.requestId,date:raw.date,note:raw.note,coverageComplete:true,groups:[{groupKey:'notes',title:'노트 정리',themes,items:[item]}]};};
 const draftRecords=job=>job.records||job.groups.flatMap(g=>g.items.map(r=>({...r,date:job.date})));
 
-async function fixture(t,send){const directory=await mkdtemp(join(tmpdir(),'bomi-bridge-'));t.after(()=>rm(directory,{recursive:true,force:true}));return {directory,bridge:createBridge({directory,send})};}
+async function fixture(t,send){const directory=await mkdtemp(join(tmpdir(),'bomi-bridge-'));t.after(()=>rm(directory,{recursive:true,force:true}));return {directory,bridge:createBridge({directory,send,deviceId:async()=>'test-device'})};}
 test('자료 먼저 저장, 중복 전달 차단, 결과 도착 후에만 ready',async t=>{
  let calls=0;let dir;
  const {directory,bridge}=await fixture(t,async(url)=>{calls++;const link=new URL(url),message=link.searchParams.get('prompt');assert.equal(link.protocol,'codex:');assert.equal(link.hostname,'threads');assert.equal(link.pathname,'/new');assert.equal(link.searchParams.get('originUrl'),'https://github.com/kjmin9789/bomi.git');assert.match(message,/회사 작업/);const job=JSON.parse(await readFile(join(dir,'request.json')));assert.equal(job.status,'opening');const source=JSON.parse(await readFile(join(dir,`${job.id}.request.json`)));assert.equal(source.date,date);});dir=directory;
@@ -151,4 +151,73 @@ test('묶음 초안은 테마를 한 번만 전달하고 재수집에도 작업�
  for(const patch of [{themes:['health','career']},{groupKey:''},{items:[]}])assert.throws(()=>validateDraft({...raw,groups:[{...raw.groups[0],...patch}]},job));
  assert.throws(()=>validateDraft({...raw,groups:[raw.groups[0],raw.groups[0]]},job));
  const duplicate={...raw.groups[0],groupKey:'another'};assert.throws(()=>validateDraft({...raw,groups:[raw.groups[0],duplicate]},job));
+});
+
+async function timedFixture(t) {
+ const directory=await mkdtemp(join(tmpdir(),'bomi-window-'));t.after(()=>rm(directory,{recursive:true,force:true}));
+ let clock='2026-10-10T10:00:00+09:00',device='computer-A',calls=0;
+ const options={directory,deviceId:async()=>device,now:()=>new Date(clock),send:async()=>{calls++;}};
+ let bridge=createBridge(options);
+ return {directory,get bridge(){return bridge;},set time(v){clock=v;},set device(v){device=v;},get calls(){return calls;},restart(){bridge=createBridge(options);},async finish(job,coverageComplete=true){await writeFile(join(directory,`${job.id}.result.json`),JSON.stringify({...draft(job),coverageComplete}));}};
+}
+test('브라우저·서버 재시작과 A→B→A 전환에도 각 기기의 마지막 요청 시각부터 이어간다',async t=>{
+ const f=await timedFixture(t);const first=(await f.bridge.collect(date)).job;
+ assert.deepEqual(first.window,{from:'2026-10-09T15:00:00.000Z',to:'2026-10-10T01:00:00.000Z'});
+ await f.finish(first);await f.bridge.close(first.id);f.restart();f.time='2026-10-10T12:00:00+09:00';
+ const second=(await f.bridge.collect(date)).job;assert.equal(second.window.from,first.window.to);
+ const request=JSON.parse(await readFile(join(f.directory,`${second.id}.request.json`)));
+ assert.equal(request.previousGroups[0].items[0].taskKey,'turn1-note');assert.equal(request.deviceId,'computer-A');
+ await f.finish(second);await f.bridge.close(second.id);f.device='computer-B';f.time='2026-10-10T14:00:00+09:00';
+ const other=(await f.bridge.collect(date)).job;assert.equal(other.window.from,first.window.from);assert.equal(other.deviceId,'computer-B');
+ await f.finish(other);await f.bridge.close(other.id);f.device='computer-A';f.time='2026-10-10T16:00:00+09:00';
+ const back=(await f.bridge.collect(date)).job;assert.equal(back.window.from,second.window.to);
+});
+test('미완료·누락·잘못된 결과를 닫아도 다음 수집에서 해당 구간을 건너뛰지 않는다',async t=>{
+ const f=await timedFixture(t);const first=(await f.bridge.collect(date)).job;
+ await f.finish(first);await f.bridge.close(first.id);f.time='2026-10-10T12:00:00+09:00';
+ const partial=(await f.bridge.collect(date)).job;await f.finish(partial,false);await f.bridge.close(partial.id);
+ f.time='2026-10-10T13:00:00+09:00';const retry=(await f.bridge.collect(date)).job;
+ assert.equal(retry.window.from,first.window.to);await f.bridge.close(retry.id);
+ f.time='2026-10-10T14:00:00+09:00';const failed=(await f.bridge.collect(date)).job;
+ assert.equal(failed.window.from,first.window.to);
+ await writeFile(join(f.directory,`${failed.id}.result.json`),'{}');await f.bridge.close(failed.id);
+ f.time='2026-10-10T15:00:00+09:00';assert.equal((await f.bridge.collect(date)).job.window.from,first.window.to);
+});
+test('새 날짜는 자정부터, 과거 날짜는 전체 재조회, 마지막 정리는 전체 대조하고 중복 실행하지 않는다',async t=>{
+ const f=await timedFixture(t);const first=(await f.bridge.collect(date)).job;
+ await f.finish(first);await f.bridge.close(first.id);f.time='2026-10-10T23:59:59+09:00';
+ const final=(await f.bridge.collect(date,{mode:'final'})).job;
+ assert.equal(final.window.from,first.window.from);assert.equal(final.window.to,'2026-10-10T14:59:59.000Z');
+ const prompt=new URL(final.launchUrl).searchParams.get('prompt');assert.match(prompt,/하루 전체를 이전 수집 내역과 대조/);assert.match(prompt,/coverageComplete/);
+ await f.finish(final);await f.bridge.close(final.id);
+ assert.equal((await f.bridge.collect(date,{mode:'final'})).alreadyRequested,true);assert.equal(f.calls,2);
+ f.time='2026-10-11T00:00:03+09:00';const next=(await f.bridge.collect('2026-10-11')).job;
+ assert.equal(next.window.from,'2026-10-10T15:00:00.000Z');await f.finish(next);await f.bridge.close(next.id);
+ const past=(await f.bridge.collect(date)).job;assert.equal(past.window.from,first.window.from);assert.equal(past.window.to,'2026-10-10T15:00:00.000Z');
+ await assert.rejects(()=>f.bridge.collect('2026-10-12'));await assert.rejects(()=>f.bridge.collect(date,{mode:'unexpected'}));
+});
+test('밤 자동 정리가 미확인 초안을 덮어쓰지 않고 순서대로 다시 보여준다',async t=>{
+ const f=await timedFixture(t);const first=(await f.bridge.collect(date)).job;await f.finish(first);
+ f.time='2026-10-10T23:59:59+09:00';const second=(await f.bridge.collect(date,{mode:'final'})).job;
+ assert.notEqual(second.id,first.id);assert.equal((await f.bridge.status()).pendingCount,2);
+ await f.finish(second);assert.equal((await f.bridge.status()).job.id,first.id);
+ await f.bridge.close(first.id);assert.equal((await f.bridge.status()).job.id,second.id);
+ await f.bridge.close(second.id);assert.equal((await f.bridge.status()).job,null);
+});
+test('새 조회 결과는 누락 점검 여부가 있어야 검증을 통과한다',()=>{
+ const job={id:'new',date,schemaVersion:3,window:{from:'',to:''}},raw=draft(job);
+ delete raw.coverageComplete;assert.throws(()=>validateDraft(raw,job));
+ raw.coverageComplete='yes';assert.throws(()=>validateDraft(raw,job));
+ raw.coverageComplete=false;assert.doesNotThrow(()=>validateDraft(raw,job));
+});
+
+test('자동 실행은 미확인 초안과 별개로 요청 ID를 지정해 완료 여부를 확인한다',async t=>{
+ const f=await timedFixture(t),first=(await f.bridge.collect(date)).job;await f.finish(first);
+ f.time='2026-10-10T23:59:59+09:00';const second=(await f.bridge.collect(date,{mode:'final'})).job;await f.finish(second);
+ assert.equal((await f.bridge.status()).job.id,first.id);
+ assert.equal((await f.bridge.status(second.id)).job.id,second.id);
+ assert.equal((await f.bridge.status(second.id)).job.status,'ready');
+ await assert.rejects(()=>f.bridge.status('../../outside'));
+ await f.bridge.close(first.id);await f.bridge.close(second.id);
+ const again=await f.bridge.collect(date,{mode:'final'});assert.equal(again.requestedJobId,second.id);assert.equal(f.calls,2);
 });

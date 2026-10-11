@@ -35,11 +35,11 @@ export function createAppServer(bridge=createBridge(), {cloudOrigin=''}={}) {
     }
     if(!remote && (req.headers['sec-fetch-site']==='cross-site'||(req.headers.origin&&req.headers.origin!==`http://${host}`)))return json(403,{error:'보미 화면에서 요청해주세요.'});
     try {
-      if(path==='/api/codex/status'&&req.method==='GET')return json(200,await bridge.status());
+      if(path==='/api/codex/status'&&req.method==='GET')return json(200,await bridge.status(new URL(req.url,'http://localhost').searchParams.get('id')??undefined));
       if(req.method!=='POST'||(!remote && req.headers.origin!==`http://${host}`)||req.headers['x-bomi-request']!=='1'||req.headers['content-type']!=='application/json')return json(403,{error:'보미 화면에서 요청해주세요.'});
       let body='';for await(const chunk of req){body+=chunk;if(Buffer.byteLength(body)>8192)return json(413,{error:'요청이 너무 커요.'});}
       let value;try{value=JSON.parse(body);}catch{return json(400,{error:'요청 형식을 확인해주세요.'});}
-      if(path==='/api/codex/collect')return json(200,await bridge.collect(value?.date));
+      if(path==='/api/codex/collect')return json(200,await bridge.collect(value?.date,{mode:value?.mode}));
       if(path==='/api/codex/close')return json(200,await bridge.close(value?.id));
       return json(404,{error:'지원하지 않는 요청이에요.'});
     } catch {return json(400,{error:'요청을 처리하지 못했어요. 연결 설정과 날짜를 확인해주세요.'});}
