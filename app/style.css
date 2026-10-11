@@ -37,3 +37,4 @@ dialog .draft-include{display:flex;align-items:center;gap:8px;min-height:44px;ma
 .heading-actions .secondary:hover{background:#D5D5D9}
 
 #future-form .save-row{justify-content:flex-end}
+.work-group + .work-group{margin-top:24px}.work-group-title{font-size:18px;margin:18px 0 8px;overflow-wrap:anywhere}.work-group .record h3{font-size:16px}
