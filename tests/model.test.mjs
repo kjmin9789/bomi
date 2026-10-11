@@ -165,3 +165,14 @@ test('루틴 일정은 한국어 요일과 오전·오후로 표시한다',()=>{
   assert.equal(routineSchedule({days:[5,1,3],time:'20:30'}),'월·수·금요일 오후 8시 30분');
   assert.equal(routineSchedule({days:[0,1,2,3,4,5,6],time:'00:00'}),'매일 오전 12시');
 });
+
+
+test('루틴 메모는 백업에서도 보존하고 빈 값과 이전 일정도 지원한다',()=>{
+  const r={id:'memo-test',title:'복습',kind:'bedtime',days:[1],time:'08:00',before:'01:00',enabled:true};
+  const state=emptyState();state.routines=[validateRoutine({...r,memo:'  준비물 확인  '})];
+  assert.equal(validateState(state).routines[0].memo,'준비물 확인');
+  assert.equal(validateRoutine(r).before,'01:00');
+  assert.equal(validateRoutine({...r,memo:''}).memo,undefined);
+  assert.throws(()=>validateRoutine({...r,memo:'a'.repeat(501)}));
+  assert.throws(()=>validateRoutine({...r,memo:42}));
+});

@@ -96,7 +96,8 @@ export function validateRoutine(r) {
   if(!r || typeof r.id!=='string' || !/^[a-zA-Z0-9-]{1,80}$/.test(r.id) || typeof r.title!=='string' || !r.title.trim() || r.title.length>100 || !['activity','bedtime'].includes(r.kind) || !validTime(r.time) || !Array.isArray(r.days) || !r.days.length || r.days.length>7 || new Set(r.days).size!==r.days.length || r.days.some(d=>!Number.isInteger(d)||d<0||d>6) || typeof r.enabled!=='boolean' || (r.kind==='bedtime'&&!validTime(r.before))) throw new Error('반복 질문의 이름·요일·시각을 확인해주세요.');
   const themes=r.themes??[];
   if(!Array.isArray(themes)||themes.length>3||new Set(themes).size!==themes.length||themes.some(id=>!THEMES.some(t=>t.id===id)))throw new Error('루틴 테마를 확인해주세요.');
-  return {themes:[...themes],id:r.id,title:r.title.trim(),kind:r.kind,time:r.time,days:[...r.days],enabled:r.enabled,before:r.kind==='bedtime'?r.before:''};
+  if(r.memo!==undefined&&(typeof r.memo!=='string'||r.memo.length>500))throw new Error('메모는 500자까지 적을 수 있어요.');
+  return {...(r.memo?.trim()?{memo:r.memo.trim()}:{}),themes:[...themes],id:r.id,title:r.title.trim(),kind:r.kind,time:r.time,days:[...r.days],enabled:r.enabled,before:r.kind==='bedtime'?r.before:''};
 }
 export function routineOccurrence(r,date) { return `${date}:${r.id}`; }
 export function routineDue(state, now=new Date()) {
