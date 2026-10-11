@@ -130,3 +130,11 @@ test('자동 전송 결과를 검증 후 ready로 수신하고 종료한 요청�
  const next=await bridge.collect(date);await bridge.close(next.job.id);rejectRun(new Error('private'));
  await new Promise(r=>setTimeout(r,20));assert.equal((await bridge.status()).job,null);
 });
+
+test('가져온 한 줄 요약은 상세를 보존하며 길이와 형식을 검사한다',()=>{
+ const job={id:'summary-test',date,schemaVersion:2},raw=draft(job);
+ raw.records[0].summary=' 노트를 정리했다 ';
+ const entry=validateDraft(raw,job).records[0];
+ assert.equal(entry.summary,'노트를 정리했다');assert.equal(entry.text,raw.records[0].text);
+ for(const summary of [42,'x'.repeat(81),'첫 줄\n둘째 줄']){raw.records[0].summary=summary;assert.throws(()=>validateDraft(raw,job));}
+});

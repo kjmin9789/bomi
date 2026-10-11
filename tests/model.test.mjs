@@ -75,3 +75,12 @@ test('내용 묶음은 순서와 원본을 보존하고 백업에서도 유지�
  assert.deepEqual(activeThemes(restored.records,a.date),activeThemes(data.records,a.date));
  for(const group of [null,{},'x'.repeat(81),'두\n줄'])assert.throws(()=>validateRecord({...a,group}));
 });
+
+test('짧은 제목은 상세와 별도로 검증하고 백업 왕복에도 보존한다',()=>{
+  const entry={...record('brief'),summary:' 글을 임시저장했다 ',text:'사진과 본문을 수정하고 편집기에 임시저장했다.'};
+  const restored=validateState({...emptyState(),records:[entry]}).records[0];
+  assert.equal(restored.summary,'글을 임시저장했다');
+  assert.equal(restored.text,entry.text);
+  assert.equal(validateRecord({...entry,summary:''}).summary,undefined);
+  for(const summary of [42,'x'.repeat(81),'첫 줄\n다음 줄'])assert.throws(()=>validateRecord({...entry,summary}));
+});

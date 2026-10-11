@@ -42,7 +42,8 @@ export function validateRecord(record, maxDate=today(), allowLegacy=false) {
   if (typeof record.result!=='string' || record.result.length>1000) throw new Error('남은 결과는 1,000자까지 적을 수 있어요.');
   if (!Array.isArray(record.themes) || !record.themes.length || record.themes.length>(allowLegacy?ALL_THEMES.length:THEMES.length) || new Set(record.themes).size!==record.themes.length || record.themes.some(id=>!(allowLegacy?ALL_THEMES:THEMES).some(t=>t.id===id))) throw new Error('관련 테마를 한 개 이상 골라주세요.');
   if(record.group!==undefined && (typeof record.group!=='string'||record.group.length>80||/[\u0000-\u001f]/.test(record.group)))throw new Error('작업 묶음 이름은 한 줄로 80자까지 적어주세요.');
-  return {...(record.group?.trim()?{group:record.group.trim()}:{}),id:record.id,date:record.date,text:record.text.trim(),result:record.result.trim(),themes:[...record.themes], saved:record.saved===true};
+  if(record.summary!==undefined && (typeof record.summary!=='string'||record.summary.length>80||/[\u0000-\u001f]/.test(record.summary)))throw new Error('목록의 한 줄은 80자까지 적어주세요.');
+  return {...(record.summary?.trim()?{summary:record.summary.trim()}:{}),...(record.group?.trim()?{group:record.group.trim()}:{}),id:record.id,date:record.date,text:record.text.trim(),result:record.result.trim(),themes:[...record.themes], saved:record.saved===true};
 }
 export const emptyState = () => ({version:1,records:[],futures:{},reviews:{},rest:[],reminder:'',snoozed:{},onboarded:false});
 export function validateState(data) {

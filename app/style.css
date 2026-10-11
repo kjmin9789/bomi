@@ -40,3 +40,5 @@ dialog .draft-include{display:flex;align-items:center;gap:8px;min-height:44px;ma
 .work-group + .work-group{margin-top:24px}.work-group-title{font-size:18px;margin:18px 0 8px;overflow-wrap:anywhere}.work-group .record h3{font-size:16px}
 
 .bridge-command{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;}
+
+.work-group-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px 0 8px}.work-group-heading .work-group-title{margin:0}.work-group-heading .chips{justify-content:flex-end;flex-shrink:0}.record-open{width:100%;text-align:left;align-items:center;gap:14px;border-radius:0}.record-open:hover{background:var(--surface-muted)}.record-open:focus-visible{outline:2px solid var(--primary);outline-offset:2px}.record-title{font-size:16px;line-height:1.6;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}.record-open .record-body{flex:1;min-width:0}
