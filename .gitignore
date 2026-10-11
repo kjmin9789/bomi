@@ -41,3 +41,6 @@
 !/tests/cloud.test.mjs
 !/tests/cloud-client.test.mjs
 !/cloud/setup-keys.mjs
+
+!/codex-runner.mjs
+!/tests/codex-runner.test.mjs
