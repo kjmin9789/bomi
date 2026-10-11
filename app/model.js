@@ -53,7 +53,7 @@ export function validateRecord(record, maxDate=today(), allowLegacy=false) {
   if(record.summary!==undefined && (typeof record.summary!=='string'||record.summary.length>80||/[\u0000-\u001f]/.test(record.summary)))throw new Error('목록의 한 줄은 80자까지 적어주세요.');
   return {...(record.summary?.trim()?{summary:record.summary.trim()}:{}),...(record.group?.trim()?{group:record.group.trim()}:{}),id:record.id,date:record.date,text:record.text.trim(),result:record.result.trim(),themes:[...record.themes], saved:record.saved===true};
 }
-export const emptyState = () => ({version:1,records:[],futures:{},reviews:{},rest:[],reminder:'',snoozed:{},onboarded:false});
+export const emptyState = () => ({version:1,records:[],futures:{},reviews:{},rest:[],reminder:'',snoozed:{},routines:[],checkins:[],onboarded:false});
 export function validateState(data) {
   if (!data || data.version!==1 || !Array.isArray(data.records) || data.records.length>20000) throw new Error('지원하는 보미 백업 파일이 아니에요.');
   const next = emptyState(); next.records=data.records.map(r=>validateRecord(r,today(),true));
@@ -71,6 +71,10 @@ export function validateState(data) {
   if (data.reminder && !/^([01]\d|2[0-3]):[0-5]\d$/.test(data.reminder)) throw new Error('알림 시각을 확인해주세요.');
   next.reminder=data.reminder||''; next.onboarded=data.onboarded===true;
   for(const [date,value] of Object.entries(data.snoozed||{})) if(validDate(date)&&Number.isFinite(value)) next.snoozed[date]=value;
+  if(!Array.isArray(data.routines??[]) || (data.routines??[]).length>100 || !Array.isArray(data.checkins??[]) || (data.checkins??[]).length>20000) throw new Error('반복 질문 데이터를 확인해주세요.');
+  next.routines=(data.routines??[]).map(validateRoutine);
+  next.checkins=(data.checkins??[]).map(a=>validateCheckin(a));
+  if(new Set(next.routines.map(r=>r.id)).size!==next.routines.length || new Set(next.checkins.map(a=>a.key)).size!==next.checkins.length) throw new Error('중복된 반복 질문이나 답변이 있어요.');
   return next;
 }
 export function weekSummary(records, start) {
@@ -85,4 +89,58 @@ export function demoState() {
     for(let j=0;j<(day===0?2:1+(day%3));j++) { const [text,result,themes]=examples[(day+j)%examples.length]; state.records.push({id:`demo-${day}-${j}`,date:shiftDate(today(),-day),text,result,themes,saved:false}); }
   }
   return state;
+}
+
+export const validTime = value => typeof value==='string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+export function validateRoutine(r) {
+  if(!r || typeof r.id!=='string' || !/^[a-zA-Z0-9-]{1,80}$/.test(r.id) || typeof r.title!=='string' || !r.title.trim() || r.title.length>100 || !['activity','bedtime'].includes(r.kind) || !validTime(r.time) || !Array.isArray(r.days) || !r.days.length || r.days.length>7 || new Set(r.days).size!==r.days.length || r.days.some(d=>!Number.isInteger(d)||d<0||d>6) || typeof r.enabled!=='boolean' || (r.kind==='bedtime'&&!validTime(r.before))) throw new Error('반복 질문의 이름·요일·시각을 확인해주세요.');
+  const themes=r.themes??[];
+  if(!Array.isArray(themes)||themes.length>3||new Set(themes).size!==themes.length||themes.some(id=>!THEMES.some(t=>t.id===id)))throw new Error('루틴 테마를 확인해주세요.');
+  if(r.memo!==undefined&&(typeof r.memo!=='string'||r.memo.length>500))throw new Error('메모는 500자까지 적을 수 있어요.');
+  return {...(r.memo?.trim()?{memo:r.memo.trim()}:{}),themes:[...themes],id:r.id,title:r.title.trim(),kind:r.kind,time:r.time,days:[...r.days],enabled:r.enabled,before:r.kind==='bedtime'?r.before:''};
+}
+export function routineOccurrence(r,date) { return `${date}:${r.id}`; }
+export function routineDue(state, now=new Date()) {
+  const date=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul'}).format(now);
+  const time=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Seoul',hour:'2-digit',minute:'2-digit',hour12:false}).format(now);
+  const weekday=new Date(`${date}T12:00:00Z`).getUTCDay();
+  if(state.rest.includes(date))return [];
+  return state.routines.filter(r=>r.enabled&&r.days.includes(weekday)&&r.time<=time&&!state.checkins.some(a=>a.key===routineOccurrence(r,date))).map(r=>({...r,date,key:routineOccurrence(r,date)}));
+}
+export function validateCheckin(a, now=new Date()) {
+  const date=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul'}).format(now);
+  if(!a || typeof a.routineId!=='string' || !/^[a-zA-Z0-9-]{1,80}$/.test(a.routineId) || !validDate(a.date) || a.date>date || a.key!==`${a.date}:${a.routineId}` || typeof a.title!=='string' || !a.title.trim() || a.title.length>100 || !['done','skip','bedtime'].includes(a.answer)) throw new Error('답변 내용을 확인해주세요.');
+  const next={key:a.key,routineId:a.routineId,date:a.date,title:a.title,answer:a.answer,bedtime:'',before:validTime(a.before)?a.before:''};
+  if(a.answer==='bedtime') {
+    if(typeof a.bedtime!=='string'|| !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(a.bedtime)||!validDate(a.bedtime.slice(0,10))||!validTime(a.bedtime.slice(11))||!validTime(a.before))throw new Error('누운 날짜와 시각을 확인해주세요.');
+    if(a.bedtime<`${shiftDate(a.date,-1)}T00:00`||a.bedtime>=`${shiftDate(a.date,1)}T00:00`||+new Date(`${a.bedtime}:00+09:00`)>+now)throw new Error('지난밤 실제로 누운 날짜와 시각을 골라주세요.');
+    next.bedtime=a.bedtime;next.before=a.before;
+  }
+  return next;
+}
+export function bedtimeBefore(a) { return a.bedtime<`${a.date}T${a.before}`; }
+
+export function routineSchedule(r) {
+  const days=r.days.length===7?'매일':r.days.slice().sort((a,b)=>a-b).map(d=>['일','월','화','수','목','금','토'][d]).join('·')+'요일';
+  return `${days} ${routineTime(r.time)}`;
+}
+export function routineTime(time) {
+  const [hour,minute]=time.split(':').map(Number);
+  return `${hour<12?'오전':'오후'} ${hour%12||12}시${minute?` ${minute}분`:''}`;
+}
+export function saveRoutineAnswer(state,input,themes) {
+  const answer=validateCheckin(input);
+  const routine=state.routines.find(r=>r.id===answer.routineId);
+  if(!routine)throw new Error('루틴을 찾지 못했어요. 새로고침해주세요.');
+  const recordId=`routine-${answer.key}`;
+  let record;
+  if(answer.answer!=='skip') {
+    record=validateRecord({id:recordId,date:answer.answer==='bedtime'?answer.bedtime.slice(0,10):answer.date,
+      text:answer.answer==='bedtime'?`${answer.bedtime.replace('T',' ')}에 누웠어요.`:`${routine.title} 완료`,
+      result:'',themes,group:'고정 루틴',saved:state.records.find(r=>r.id===recordId)?.saved??false});
+  }
+  const i=state.checkins.findIndex(a=>a.key===answer.key);
+  if(i<0)state.checkins.push(answer);else state.checkins[i]=answer;
+  state.records=state.records.filter(r=>r.id!==recordId);
+  if(record){state.records.push(record);routine.themes=[...record.themes];}
 }

@@ -54,3 +54,11 @@ The inline group title editor uses Wanted Montage IconPencil under the same MIT 
 
 Group navigation uses Wanted Montage IconChevronRight (MIT):
 https://github.com/wanteddev/montage-web/blob/main/packages/icon/src/icon-chevron-right.tsx
+
+Routine navigation uses the original Wanted Montage IconClock SVG paths under the MIT license above.
+
+- https://github.com/wanteddev/montage-web/blob/main/packages/icon/src/icon-clock.tsx
+
+Routine notification switches adapt Wanted Montage medium Switch dimensions and motion under the MIT license above, with Bomi color tokens and a 48px touch target.
+
+- https://github.com/wanteddev/montage-web/blob/main/packages/core/src/components/switch/style.ts
