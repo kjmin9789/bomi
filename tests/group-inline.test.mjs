@@ -23,3 +23,23 @@ test('테마 선택 직후 닫아도 테마와 제목을 순차 저장한다',as
  const f=fixture();f.edit.onclick();f.input.value='새 제목';f.select.value='health';f.select.onchange();await f.context.closeDialog();
  assert.equal(f.writes.length,2);assert.equal(f.writes[0][0].group,'원래 제목');assert.equal(f.writes[0][0].themes[0],'health');assert.equal(f.records[0].group,'새 제목');assert.equal(f.records[0].text,'원문');assert.equal(f.closed(),1);
 });
+
+test('개별 수정은 입력된 내용만 바꾸고 날짜·테마·묶음과 기존 결과를 이어받는다',async()=>{
+ const old={id:'a',date:'2026-10-11',themes:['health'],group:'운동',result:'기존 자료',saved:true};
+ let submit,reviewed;
+ const context=vm.createContext({document:{addEventListener:(_,handler)=>submit=handler},FormData:class {get(key){return {text:'수정한 내용',summary:'수정 요약',date:'2026-10-01',group:'다른 묶음',result:'변경 시도'}[key]}getAll(){return ['career']}},data:()=>({records:[old]}),selected:'2026-10-12',today:()=> '2026-10-12',validateRecord:r=>r,reviewRecord:r=>reviewed=r});
+ const start=source.indexOf("document.addEventListener('submit',");
+ vm.runInContext(source.slice(start,source.indexOf("document.addEventListener('change',",start)),context);
+ await submit({preventDefault(){},target:{id:'record-form',dataset:{id:'a'}}});
+ assert.equal(reviewed.text,'수정한 내용');assert.equal(reviewed.summary,'수정 요약');
+ for(const key of ['date','themes','group','result','saved'])assert.deepEqual(reviewed[key],old[key]);
+});
+
+test('새 기록은 선택한 날짜와 처음 고른 테마를 사용한다',async()=>{
+ let submit,reviewed;
+ const context=vm.createContext({document:{addEventListener:(_,handler)=>submit=handler},FormData:class {get(key){return {text:'걷기',summary:'산책했다',group:'운동'}[key]}getAll(){return ['health']}},data:()=>({records:[]}),crypto:{randomUUID:()=> 'new'},selected:'2026-10-10',today:()=> '2026-10-12',validateRecord:r=>r,reviewRecord:r=>reviewed=r});
+ const start=source.indexOf("document.addEventListener('submit',");
+ vm.runInContext(source.slice(start,source.indexOf("document.addEventListener('change',",start)),context);
+ await submit({preventDefault(){},target:{id:'record-form',dataset:{id:''}}});
+ assert.equal(reviewed.date,'2026-10-10');assert.equal(reviewed.themes[0],'health');assert.equal(reviewed.result,'');
+});
