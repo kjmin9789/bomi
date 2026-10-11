@@ -70,3 +70,14 @@ test('동시 저장 충돌은 합친 입력을 먼저 로컬에 보존하고 응
  await assert.rejects(store.save(local,base),/response lost/);
  const result=await store.retry();assert.equal(result.records.length,2);assert.equal(store.pending().length,0);
 });
+
+test('묶음 테마 변경과 다른 기기의 개별 내용 변경을 함께 보존한다',async()=>{
+ const {mergeStates}=await import('../app/cloud.js');const {putRecord,patchGroup,projectRecords}=await import('../app/model.js');
+ const base=emptyState();putRecord(base,{id:'a',date:'2026-10-11',text:'원문',result:'',themes:['career'],group:'작업'},'g');
+ const local=structuredClone(base),remote=structuredClone(base);
+ patchGroup(local,'g',{themes:['health']});remote.records[0].text='다른 기기에서 수정';
+ const merged=mergeStates(base,local,remote);
+ assert.equal(merged.records[0].text,'다른 기기에서 수정');assert.deepEqual(merged.groups[0].themes,['health']);
+ assert.equal('themes' in merged.records[0],false);assert.deepEqual(projectRecords(merged)[0].themes,['health']);
+ patchGroup(remote,'g',{themes:['money']});assert.throws(()=>mergeStates(base,local,remote),/다른 기기/);
+});

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {sortedWorkGroups,newestRecords,groupRecords,activeThemes,flowerStage,validateRecord,validateState,emptyState,weekStart,shiftDate,weekSummary,validDate} from '../app/model.js';
+import {projectRecords,sortedWorkGroups,newestRecords,groupRecords,activeThemes,flowerStage,validateRecord,validateState,emptyState,weekStart,shiftDate,weekSummary,validDate} from '../app/model.js';
 const record=(id,date='2026-10-10',themes=['career'])=>({id,date,text:'원고 준비',result:'임시저장 원고',themes,saved:false});
 test('테마 중복 기록은 실천 테마 수를 바꾸지 않는다',()=>{
   const once=activeThemes([record('1')],'2026-10-10');
@@ -32,20 +32,20 @@ test('주간 요약은 월요일부터 일요일까지, 기록 수 대신 실천
 });
 test('백업 검증은 중복 ID·잘못된 알림을 차단하고 텍스트를 그대로 보존',()=>{
   const data=emptyState();data.records=[{...record('1'),text:'<script>not executable</script>'}];
-  assert.deepEqual(validateState(data).records,data.records);
+  assert.deepEqual(projectRecords(validateState(data)).map(({groupId,group,...r})=>r),data.records);
   assert.throws(()=>validateState({...data,records:[record('1'),record('1')]}));
   assert.throws(()=>validateState({...data,reminder:'99:70'}));
   assert.throws(()=>validateState({...data,rest:['2026-02-30']}));
-  assert.throws(()=>validateState({...data,version:2}));
+  assert.throws(()=>validateState({...data,version:99}));
 });
 
 test('세 테마만 활성화하고 이전 기록과 미래 문장은 보존',()=>{
   const data=emptyState(); data.records=[record('old','2026-10-10',['family','sns','home'])];
   data.futures={family:'가족의 미래',home:'나의 집',sns:'나의 콘텐츠'};
   const restored=validateState(data);
-  assert.deepEqual(restored.records,data.records);
+  assert.deepEqual(projectRecords(restored).map(({groupId,group,...r})=>r),data.records);
   assert.deepEqual(restored.futures,data.futures);
-  assert.deepEqual(activeThemes(restored.records,'2026-10-10'),[false,false,false]);
+  assert.deepEqual(activeThemes(projectRecords(restored),'2026-10-10'),[false,false,false]);
   assert.throws(()=>validateRecord(record('new','2026-10-10',['family'])));
 });
 
@@ -110,9 +110,9 @@ test('내용 묶음은 순서와 원본을 보존하고 백업에서도 유지�
  assert.deepEqual(groupRecords([a,b,c,old]),[['글 작성',[a,c]],['생활 도구 만들기',[b]],['',[old]]]);
  const data=emptyState();data.records=[a,b,c,old];
  const restored=validateState(JSON.parse(JSON.stringify(data)));
- assert.equal(restored.records[0].group,'글 작성');
- assert.deepEqual(restored.records[3],old);
- assert.deepEqual(activeThemes(restored.records,a.date),activeThemes(data.records,a.date));
+ assert.equal(projectRecords(restored)[0].group,'글 작성');
+ assert.deepEqual((({groupId,group,...r})=>r)(projectRecords(restored)[3]),old);
+ assert.deepEqual(activeThemes(projectRecords(restored),a.date),activeThemes(data.records,a.date));
  for(const group of [null,{},'x'.repeat(81),'두\n줄'])assert.throws(()=>validateRecord({...a,group}));
 });
 
@@ -146,7 +146,7 @@ test('루틴 완료 답변은 한 번만 기록하고 수정·건너뛰기를 �
   const answer={key:`${date}:test-routine`,routineId:'test-routine',date,title:'확인한 행동',answer:'done'};
   saveRoutineAnswer(state,answer,['health']);saveRoutineAnswer(state,answer,['health']);
   assert.equal(state.records.length,1);assert.equal(state.checkins.length,1);
-  assert.equal(flowerStage(activeThemes(state.records,date)),1);
+  assert.equal(flowerStage(activeThemes(projectRecords(state),date)),1);
   assert.equal(validateState(state).records.length,1);
   saveRoutineAnswer(state,{...answer,answer:'skip'},[]);
   assert.equal(state.records.length,0);assert.equal(state.checkins[0].answer,'skip');
@@ -159,7 +159,7 @@ test('확인하지 않은 테마·미래 취침은 기록하지 않고 원상태
   assert.throws(()=>saveRoutineAnswer(state,answer,['unknown']));assert.equal(JSON.stringify(state),before);
   const previous=shiftDate(date,-1);
   saveRoutineAnswer(state,{...answer,answer:'bedtime',bedtime:`${previous}T23:30`,before:'01:00'},['health']);
-  assert.equal(state.records[0].date,previous);
+  assert.equal(projectRecords(state)[0].date,previous);
 });
 test('루틴 일정은 한국어 요일과 오전·오후로 표시한다',()=>{
   assert.equal(routineSchedule({days:[5,1,3],time:'20:30'}),'월·수·금요일 오후 8시 30분');
@@ -190,4 +190,23 @@ test('일반 루틴과 완료 답변은 불필요한 빈 취침 필드를 저장
   assert.equal('before' in routine,false);
   const answer=validateCheckin({key:'2026-10-10:test',routineId:'test',date:'2026-10-10',title:'운동',answer:'done',bedtime:'',before:''},new Date('2026-10-12T00:00:00Z'));
   assert.equal('before' in answer,false);assert.equal('bedtime' in answer,false);
+});
+
+test('v1 이관은 테마가 다른 기존 기록을 분리하고 내용·꽃·백업 왕복을 보존한다',()=>{
+ const legacy={...emptyState(),version:1,records:[{...record('a'),group:'같은 제목'},{...record('b'),group:'같은 제목'},{...record('c','2026-10-10',['health']),group:'같은 제목'}]};delete legacy.groups;
+ const next=validateState(legacy);
+ assert.equal(next.version,2);assert.equal(next.groups.length,2);
+ assert.equal(next.records[0].groupId,next.records[1].groupId);assert.notEqual(next.records[0].groupId,next.records[2].groupId);
+ for(const r of next.records)for(const field of ['date','themes','group','saved'])assert.equal(field in r,false);
+ assert.deepEqual(activeThemes(projectRecords(next),'2026-10-10'),activeThemes(legacy.records,'2026-10-10'));
+ assert.deepEqual(validateState(JSON.parse(JSON.stringify(next))),next);
+ assert.throws(()=>validateState({...next,groups:[]}));
+});
+test('같은 제목의 독립 묶음과 제목 변경은 ID를 유지하고 개별 기록을 다시 쓰지 않는다',async()=>{
+ const {putRecord,patchGroup}=await import('../app/model.js');const s=emptyState();
+ putRecord(s,{...record('a'),group:'동일'},'g1');putRecord(s,{...record('b'),group:'동일'},'g2');
+ const before=JSON.stringify(s.records);patchGroup(s,'g1',{title:'수정',themes:['health']});
+ assert.equal(JSON.stringify(s.records),before);assert.equal(s.groups[1].title,'동일');
+ assert.deepEqual(projectRecords(s)[0].themes,['health']);assert.equal(groupRecords(projectRecords(s)).length,2);
+ s.records=s.records.filter(r=>r.groupId!=='g1');assert.deepEqual(validateState(s).groups.map(g=>g.id),['g2']);
 });

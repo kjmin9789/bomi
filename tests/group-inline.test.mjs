@@ -4,11 +4,12 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 const source=readFileSync(new URL('../app/app.js',import.meta.url),'utf8');
 function fixture(updateResult=true) {
- const records=[{id:'a',group:'원래 제목',text:'원문',summary:'요약',themes:['career']}];
+ const records=[{id:'a',groupId:'g',group:'원래 제목',text:'원문',summary:'요약',themes:['career']}];
  const input={value:'원래 제목',hidden:true,focus(){},select(){}},label={},select={querySelectorAll:()=>[]},edit={},heading={},editor={hidden:true},save={};
  const nodes={'#group-title-input':input,'#group-title-label':label,'#group-theme':select,'#group-title-edit':edit,'#group-title-heading':heading,'#group-title-editor':editor,'#group-title-save':save};
+ const groups=[{id:'g',date:'2026-10-11',title:'원래 제목',themes:['career']}];
  let closed=0;const writes=[];
- const context=vm.createContext({themeIcons:{},THEMES:[{id:'career',name:'커리어'},{id:'health',name:'건강'},{id:'money',name:'재테크'}],groupItems:()=>records,theme:id=>({name:id,color:id}),esc:String,showDialog(){},closeButton:'',recordRow:()=>'',dialog:{querySelector:s=>nodes[s],close:()=>closed++},update:async change=>{if(!updateResult)return false;change({records});writes.push(structuredClone(records));return true;},render(){},saving:false,filter:''});
+ const context=vm.createContext({patchGroup:(s,id,values)=>{Object.assign(s.groups.find(g=>g.id===id),values);records[0].group=s.groups[0].title;records[0].themes=s.groups[0].themes;},themeIcons:{},THEMES:[{id:'career',name:'커리어'},{id:'health',name:'건강'},{id:'money',name:'재테크'}],groupItems:()=>records,theme:id=>({name:id,color:id}),esc:String,showDialog(){},closeButton:'',recordRow:()=>'',dialog:{querySelector:s=>nodes[s],close:()=>closed++},update:async change=>{if(!updateResult)return false;change({records,groups});writes.push(structuredClone(records));return true;},render(){},saving:false,filter:''});
  vm.runInContext(source.slice(source.indexOf('let groupEditor=null;'),source.indexOf('function daily()')),context);
  context.groupDetail('a');
  return {context,input,select,edit,heading,editor,save,records,writes,closed:()=>closed};
@@ -49,7 +50,7 @@ test('바로 저장은 성공 후에만 묶음으로 돌아가고 실패 시 편
  for(const succeeds of [true,false]) {
   const records=[{id:'a',date:'2026-10-11',text:'원문',themes:['career']}];
   let opened=0,rendered=0;
-  const context=vm.createContext({saving:false,data:()=>({records}),update:async change=>{if(!succeeds)return false;change({records});return true;},groupDetail:()=>opened++,render:()=>rendered++,toast(){}});
+  const context=vm.createContext({putRecord:(s,r)=>{s.records[s.records.findIndex(x=>x.id===r.id)]=r;},saving:false,data:()=>({records}),update:async change=>{if(!succeeds)return false;change({records});return true;},groupDetail:()=>opened++,render:()=>rendered++,toast(){}});
   vm.runInContext(source.slice(source.indexOf('async function saveRecord('),source.indexOf('function download(')),context);
   await context.saveRecord({...records[0],text:'수정 본문'});
   assert.equal(records[0].text,succeeds?'수정 본문':'원문');assert.equal(opened,succeeds?1:0);assert.equal(rendered,succeeds?1:0);

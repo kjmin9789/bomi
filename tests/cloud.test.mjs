@@ -4,7 +4,7 @@ import {readFile} from 'node:fs/promises';
 import {Miniflare,convertV4MiniflareOptions} from 'miniflare';
 import {generateKeyPair, exportJWK, SignJWT, createLocalJWKSet} from 'jose';
 import {authenticate, handleRequest, saveState, readState, reminderDue, dueNotifications, sendReminders, validateSubscription} from '../cloud/worker.js';
-import {emptyState, today} from '../app/model.js';
+import {validateState,emptyState, today} from '../app/model.js';
 
 test('Cloudflare 인증·저장·알림 통합',async t=>{
   const mf=new Miniflare(convertV4MiniflareOptions({modules:true,script:'export default {fetch(){return new Response("test")}}',d1Databases:['DB'],compatibilityDate:'2026-10-01'}));
@@ -48,7 +48,7 @@ test('Cloudflare 인증·저장·알림 통합',async t=>{
     assert.equal(competing.find(r=>r.status==='rejected').reason.status,409);
     assert.equal((await readState(DB,env.ALLOWED_EMAIL)).revision,2);
     const backup=await DB.prepare('SELECT body FROM backups WHERE owner = ? AND revision = 1').bind(env.ALLOWED_EMAIL).first();
-    assert.deepEqual(JSON.parse(backup.body),state);
+    assert.deepEqual(JSON.parse(backup.body),validateState(state));
     assert.equal((await readState(DB,'other@example.com')).revision,0);
     await assert.rejects(saveState(DB,env.ALLOWED_EMAIL,input(0)),{status:409});
   });
@@ -57,7 +57,7 @@ test('Cloudflare 인증·저장·알림 통합',async t=>{
     assert.equal(reminderDue(s,now),'2026-10-11');
     assert.equal(reminderDue(s,new Date('2026-10-11T10:59:00Z')),null);
     assert.equal(reminderDue({...s,rest:['2026-10-11']},now),null);
-    assert.equal(reminderDue({...s,records:[{date:'2026-10-11'}]},now),null);
+    assert.equal(reminderDue({...s,groups:[{date:'2026-10-11'}]},now),null);
     assert.equal(reminderDue({...s,snoozed:{'2026-10-11':+now+1000}},now),null);
     assert.equal(reminderDue({...s,reminder:''},now),null);
   });

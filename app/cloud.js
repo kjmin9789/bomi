@@ -26,9 +26,9 @@ export function mergeStates(base, local, remote) {
     }
     throw new Error('같은 내용을 다른 기기에서 수정했어요. 입력은 이 기기에 보존했어요.');
   }
-  const keyed=state=>({...state,records:Object.fromEntries(state.records.map(r=>[r.id,r])),rest:Object.fromEntries(state.rest.map(d=>[d,true]))});
+  const keyed=input=>{const state=validateState(input);return {...state,groups:Object.fromEntries(state.groups.map(g=>[g.id,g])),records:Object.fromEntries(state.records.map(r=>[r.id,r])),rest:Object.fromEntries(state.rest.map(d=>[d,true]))};};
   const result=merge(keyed(base),keyed(local),keyed(remote));
-  return validateState({...result,records:Object.values(result.records),rest:Object.keys(result.rest)});
+  return validateState({...result,groups:Object.values(result.groups),records:Object.values(result.records),rest:Object.keys(result.rest)});
 }
 
 export class CloudStore {

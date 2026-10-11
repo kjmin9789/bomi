@@ -84,7 +84,7 @@ export function reminderDue(state, now) {
   const day = new Intl.DateTimeFormat('sv-SE', {timeZone:'Asia/Seoul'}).format(now);
   const time = new Intl.DateTimeFormat('en-GB', {timeZone:'Asia/Seoul', hour:'2-digit', minute:'2-digit', hour12:false}).format(now);
   // A single daily check-in; no assumption that an unrecorded day was inactive.
-  return state.reminder && time >= state.reminder && !state.rest.includes(day) && !state.records.some(r=>r.date===day) && !(state.snoozed[day] > +now) ? day : null;
+  return state.reminder && time >= state.reminder && !state.rest.includes(day) && !state.groups.some(g=>g.date===day) && !(state.snoozed[day] > +now) ? day : null;
 }
 
 export function dueNotifications(state,now) {

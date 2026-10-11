@@ -1,5 +1,5 @@
 import {api, CloudStore, enablePush, disablePush, codexRequest} from './cloud.js';
-import {sortedWorkGroups,newestRecords,groupRecords,ALL_THEMES,THEMES,today,shiftDate,weekStart,activeThemes,themesByDate,flowerStage,validateRecord,emptyState,validateState,weekSummary,demoState,validateRoutine,validateCheckin,routineDue,saveRoutineAnswer,routineTime} from './model.js';
+import {projectRecords,putRecord,patchGroup,sortedWorkGroups,newestRecords,groupRecords,ALL_THEMES,THEMES,today,shiftDate,weekStart,activeThemes,themesByDate,flowerStage,validateRecord,emptyState,validateState,weekSummary,demoState,validateRoutine,validateCheckin,routineDue,saveRoutineAnswer,routineTime} from './model.js';
 // Wanted Montage IconCheckThick (MIT); see THIRD_PARTY_NOTICES.md.
 const stampCheck = '<svg viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" focusable="false"><path d="M19.6697 6.58096C20.1774 7.08864 20.1774 7.91175 19.6697 8.41943L10.6697 17.4194C10.1621 17.9271 9.33894 17.9271 8.83126 17.4194L4.33126 12.9194C3.82358 12.4118 3.82358 11.5886 4.33126 11.081C4.83894 10.5733 5.66206 10.5733 6.16974 11.081L9.7505 14.6617L17.8313 6.58096C18.3389 6.07327 19.1621 6.07327 19.6697 6.58096Z" fill="currentColor"/></svg>';
 const themeIcons = {"money": "<svg viewBox=\"0 0 24 24\" width=\"1em\" height=\"1em\" aria-hidden=\"true\" focusable=\"false\"><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M3.60012 6.26021C3.60011 6.25652 3.6001 6.25282 3.6001 6.24912C3.6001 4.77151 4.89967 3.80957 6.28325 3.25705C7.75331 2.67001 9.75063 2.34887 12.0002 2.34912C14.2496 2.34937 16.2468 2.67051 17.7168 3.25739C19.0979 3.80876 20.3954 4.768 20.4 6.24125C20.4001 6.244 20.4001 6.24676 20.4001 6.24951V17.4995L20.4 17.5096C20.394 18.9814 19.0973 19.9402 17.7169 20.4914C16.2468 21.0785 14.2495 21.3996 12 21.3994C9.75056 21.3991 7.75331 21.078 6.28332 20.4911C4.89982 19.9387 3.6001 18.9771 3.6001 17.4994L3.60012 17.4927V13.7605L3.6001 13.7494L3.60012 13.7427V10.0105L3.6001 9.99937L3.60012 9.99266V6.26021ZM5.40011 6.24553C5.40251 5.9725 5.6787 5.43668 6.9508 4.92869C8.14203 4.45299 9.89469 4.14889 12 4.14912C14.1054 4.14936 15.8581 4.45347 17.0494 4.92909C18.3272 5.43923 18.6001 5.97732 18.6001 6.24912C18.6001 6.52102 18.327 7.05932 17.0493 7.56955C15.8581 8.04525 14.1055 8.34936 12.0002 8.34912C9.89476 8.34889 8.14202 8.04477 6.95073 7.56916C5.67991 7.06179 5.4031 6.52679 5.40012 6.25359V6.24951L5.40011 6.24553ZM18.6001 8.81872V9.99261L18.6001 9.99937C18.6001 10.2713 18.327 10.8096 17.0493 11.3198C15.8581 11.7955 14.1055 12.0996 12.0002 12.0994C9.89476 12.0991 8.14202 11.795 6.95073 11.3194C5.67991 10.812 5.4031 10.277 5.40012 10.0038V8.81847C5.68202 8.9796 5.98067 9.12002 6.28332 9.24085C7.75331 9.82774 9.75056 10.1489 12 10.1491C14.2495 10.1494 16.2468 9.82824 17.7169 9.24119C18.0195 9.12033 18.3182 8.97988 18.6001 8.81872ZM5.40012 13.7538V12.5687C5.68202 12.7298 5.98067 12.8703 6.28332 12.9911C7.75331 13.578 9.75056 13.8991 12 13.8994C14.2495 13.8996 16.2468 13.5785 17.7169 12.9914C18.0195 12.8706 18.3182 12.7301 18.6001 12.569V13.7425L18.6001 13.7494C18.6001 14.0213 18.327 14.5596 17.0493 15.0698C15.8581 15.5455 14.1055 15.8496 12.0002 15.8494C9.89476 15.8491 8.14202 15.545 6.95073 15.0694C5.67991 14.562 5.4031 14.027 5.40012 13.7538ZM17.7169 16.7414C18.0195 16.6206 18.3182 16.4801 18.6001 16.319V17.4925L18.6001 17.4994C18.6001 17.7713 18.327 18.3096 17.0493 18.8198C15.8581 19.2955 14.1055 19.5996 12.0002 19.5994C9.89476 19.5991 8.14202 19.295 6.95073 18.8194C5.67881 18.3116 5.40262 17.7761 5.40011 17.5031L5.40012 17.4995V16.3187C5.68202 16.4798 5.98067 16.6203 6.28332 16.7411C7.75331 17.328 9.75056 17.6491 12 17.6494C14.2495 17.6496 16.2468 17.3285 17.7169 16.7414Z\" fill=\"currentColor\" /></svg>", "career": "<svg viewBox=\"0 0 24 24\" width=\"1em\" height=\"1em\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M8.99989 10.1C8.50283 10.1 8.09989 10.5029 8.09989 11C8.09989 11.4971 8.50283 11.9 8.99989 11.9H14.9999C15.4969 11.9 15.8999 11.4971 15.8999 11C15.8999 10.5029 15.4969 10.1 14.9999 10.1H8.99989Z\" fill=\"currentColor\" /><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M9.57023 2.09998H14.4297C14.684 2.09995 14.9261 2.09993 15.1301 2.11659C15.3525 2.13476 15.6076 2.17715 15.8625 2.30707C16.2201 2.48923 16.5107 2.77989 16.6929 3.1374C16.8228 3.39237 16.8652 3.64748 16.8833 3.86989C16.9 4.07385 16.9 4.3159 16.9 4.57022L16.9 5.59998L17.8354 5.59998C18.3652 5.59996 18.8164 5.59995 19.1868 5.63022C19.576 5.66201 19.9546 5.73165 20.3165 5.91606C20.8622 6.19409 21.3058 6.63774 21.5839 7.18341C21.7683 7.54534 21.8379 7.92393 21.8697 8.31309C21.9 8.68351 21.8999 9.13466 21.8999 9.6645V16.8354C21.8999 17.3652 21.9 17.8165 21.8697 18.1869C21.8379 18.576 21.7683 18.9546 21.5839 19.3166C21.3058 19.8622 20.8622 20.3059 20.3165 20.5839C19.9546 20.7683 19.576 20.8379 19.1868 20.8697C18.8164 20.9 18.3653 20.9 17.8354 20.9H6.16459C5.63476 20.9 5.18353 20.9 4.81312 20.8697C4.42396 20.8379 4.04536 20.7683 3.68343 20.5839C3.13776 20.3059 2.69412 19.8622 2.41609 19.3166C2.23168 18.9546 2.16204 18.576 2.13025 18.1869C2.09998 17.8165 2.09999 17.3653 2.10001 16.8355V9.66458C2.09999 9.13474 2.09998 8.68351 2.13025 8.31309C2.16204 7.92393 2.23168 7.54534 2.41609 7.18341C2.69412 6.63774 3.13776 6.19409 3.68343 5.91606C4.04536 5.73165 4.42396 5.66201 4.81312 5.63022C5.18355 5.59995 5.63473 5.59996 6.16459 5.59998L7.1 5.59998L7.09999 4.57022C7.09997 4.3159 7.09995 4.07385 7.11661 3.86989C7.13478 3.64748 7.17717 3.39237 7.30708 3.1374C7.48924 2.77989 7.7799 2.48923 8.13741 2.30707C8.39239 2.17715 8.6475 2.13476 8.8699 2.11659C9.07387 2.09993 9.31591 2.09995 9.57023 2.09998ZM15.1 4.00002V5.60002H8.89998V4.00002C8.89998 3.9448 8.94475 3.90002 8.99998 3.90002H15C15.0552 3.90002 15.1 3.94479 15.1 4.00002ZM5.79998 7.40002C4.98542 7.40002 4.79159 7.41113 4.66007 7.45386C4.32519 7.56267 4.06264 7.82522 3.95383 8.16011C3.91109 8.29163 3.89999 8.48546 3.89999 9.30002V17.2C3.89999 18.0146 3.91109 18.2084 3.95383 18.3399C4.06264 18.6748 4.32519 18.9374 4.66007 19.0462C4.79159 19.0889 4.98542 19.1 5.79998 19.1H18.1999C19.0145 19.1 19.2083 19.0889 19.3398 19.0462C19.6747 18.9374 19.9373 18.6748 20.0461 18.3399C20.0888 18.2084 20.0999 18.0146 20.0999 17.2V9.30002C20.0999 8.48546 20.0888 8.29163 20.0461 8.16011C19.9373 7.82522 19.6747 7.56267 19.3398 7.45386C19.2083 7.41113 19.0145 7.40002 18.1999 7.40002H5.79998Z\" fill=\"currentColor\" /></svg>", "health": "<svg viewBox=\"0 0 24 24\" width=\"1em\" height=\"1em\" aria-hidden=\"true\" focusable=\"false\"><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M1.50006 9.4001C1.50006 5.93664 4.17005 3.1001 7.60004 3.1001C9.34251 3.1001 10.8974 3.83723 12 5.01883C13.1027 3.83723 14.6575 3.1001 16.4 3.1001C19.83 3.1001 22.5 5.93664 22.5 9.4001C22.5 11.04 21.9064 12.4208 20.9792 13.7026C20.0691 14.9607 18.8031 16.1683 17.4124 17.4596L17.4082 17.4635L13.6686 20.8915C13.4958 21.0499 13.3299 21.202 13.1792 21.3198C13.0137 21.4492 12.812 21.5821 12.5557 21.6605C12.1935 21.7712 11.8065 21.7712 11.4444 21.6605C11.1881 21.5821 10.9864 21.4492 10.8209 21.3198C10.6701 21.202 10.5043 21.0499 10.3314 20.8915L6.59189 17.4635L6.58764 17.4596C5.19696 16.1683 3.93093 14.9607 3.02085 13.7026C2.09362 12.4208 1.50006 11.04 1.50006 9.4001ZM7.60003 4.8999C5.23003 4.8999 3.30004 6.86336 3.30004 9.3999C3.30004 10.56 3.70648 11.5792 4.47924 12.6474C5.26876 13.7388 6.402 14.8307 7.81033 16.1384L11.9324 19.9171C11.9707 19.9521 12.0293 19.9521 12.0676 19.917L16.1897 16.1384C17.598 14.8306 18.7313 13.7388 19.5208 12.6474C20.2935 11.5792 20.7 10.56 20.7 9.3999C20.7 6.86336 18.77 4.8999 16.4 4.8999C14.8671 4.8999 13.5322 5.71317 12.7691 6.96893C12.6059 7.23757 12.3144 7.40158 12 7.40158C11.6857 7.40158 11.3941 7.23757 11.2309 6.96893C10.4678 5.71317 9.13295 4.8999 7.60003 4.8999Z\" fill=\"currentColor\" /></svg>"};
@@ -14,7 +14,8 @@ let state=emptyState(), lastRaw=null, storageBlocked=false;
 try { if(localMode) { lastRaw=localStorage.getItem(KEY); if(lastRaw) state=validateState(JSON.parse(lastRaw)); } }
 catch { storageBlocked=true; }
 let demo=false, demoData=demoState(), page='today', selected=today(), month=today().slice(0,7), filter='', reviewDate=weekStart(today()), timer, codexTimer;
-const data=()=>demo?demoData:state;
+let projectedSource,projectedData;
+const data=()=>{const source=demo?demoData:state;if(source!==projectedSource){projectedSource=source;projectedData={...source,records:projectRecords(source)};}return projectedData;};
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const theme=id=>ALL_THEMES.find(t=>t.id===id);
 const fmt=date=>new Intl.DateTimeFormat('ko-KR',{month:'long',day:'numeric',weekday:'long',timeZone:'UTC'}).format(new Date(`${date}T12:00:00Z`));
@@ -23,7 +24,7 @@ async function update(change) {
   if(saving){toast('저장 중이에요. 잠시 기다려주세요.');return false;}
   saving=true;
   try {
-    const next=structuredClone(data()); change(next);
+    const next=structuredClone(demo?demoData:state); change(next);
     const checked=validateState(next);
     if(demo) demoData=checked;
     else if(cloud) {
@@ -32,7 +33,7 @@ async function update(change) {
       if(!localMode) throw new Error('서버 연결을 확인해주세요.');
       if(storageBlocked) throw new Error('기존 저장 데이터를 읽지 못했어요. 설정에서 원본을 먼저 백업해주세요.');
       if(localStorage.getItem(KEY)!==lastRaw) throw new Error('다른 창에서 기록이 바뀌었어요. 입력 내용을 복사한 뒤 새로고침해주세요.');
-      const raw=JSON.stringify(checked); localStorage.setItem(KEY,raw); state=checked; lastRaw=raw;
+      const raw=JSON.stringify(checked); if(lastRaw)localStorage.setItem(`${KEY}.before`,lastRaw); localStorage.setItem(KEY,raw); state=checked; lastRaw=raw;
     }
     return true;
   } catch(error) { toast(cloud ? error.message : '저장하지 못했어요. 입력을 보존하고 저장 공간·다른 창의 변경을 확인해주세요.'); if(cloud) render(); return false; } finally { saving=false; }
@@ -68,24 +69,24 @@ function recordsList(records) {
 }
 function groupItems(id) {
   const record=data().records.find(r=>r.id===id);if(!record)return [];
-  return newestRecords(data().records.filter(r=>(r.group||'')===(record.group||'')&&(r.date===selected&&(!filter||r.themes.includes(filter)))));
+  return newestRecords(data().records.filter(r=>r.groupId===record.groupId&&(r.date===selected&&(!filter||r.themes.includes(filter)))));
 }
 let groupEditor=null;
 const pencilIcon='<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" d="M15.9888 3.82177C17.1457 2.66488 19.0213 2.66488 20.1782 3.82177C21.3351 4.97866 21.3351 6.85434 20.1782 8.01122L7.55327 20.6362C7.38448 20.805 7.15557 20.8998 6.91687 20.8998H4.00022C3.50316 20.8998 3.10022 20.4969 3.10022 19.9998V17.0832C3.10022 16.8445 3.19504 16.6155 3.36382 16.4468L15.9888 3.82177ZM18.9054 5.09456C18.4515 4.64062 17.7155 4.64062 17.2616 5.09456L4.90021 17.456V19.0998H6.54408L18.9054 6.73843C19.3594 6.28449 19.3594 5.5485 18.9054 5.09456Z" fill="currentColor"/></svg>';
 function groupDetail(id) {
   const items=groupItems(id);if(!items.length)return;
-  const record=items[0],ids=new Set(items.map(r=>r.id));
+  const record=items[0];
   const themeIds=[...new Set(items.flatMap(r=>r.themes))],initialTheme=themeIds.length===1&&THEMES.some(t=>t.id===themeIds[0])?themeIds[0]:'';
   showDialog(`${closeButton}<div class="group-title-line"><h2 id="group-title-heading"><span id="group-title-label">${esc(record.group||'해낸 일')}</span> <span class="count">${items.length}</span></h2><button id="group-title-edit" aria-label="묶음 제목 수정">${pencilIcon}</button><div id="group-title-editor" hidden><input id="group-title-input" aria-label="묶음 제목" maxlength="80" value="${esc(record.group||'')}" hidden><button id="group-title-save" class="primary" type="button">저장</button></div></div><fieldset id="group-theme" class="theme-picker"><legend class="sr-only">묶음 테마</legend>${THEMES.map(t=>`<label style="--accent:${t.color}"><input type="radio" name="group-theme" value="${t.id}" ${initialTheme===t.id?'checked':''}><span>${themeIcons[t.id]}${t.name}</span></label>`).join('')}</fieldset><div class="group-history">${items.map(r=>recordRow(r)).join('')}</div>`);
   const input=dialog.querySelector('#group-title-input'),label=dialog.querySelector('#group-title-label'),select=dialog.querySelector('#group-theme');
   const heading=dialog.querySelector('#group-title-heading'),editor=dialog.querySelector('#group-title-editor'),edit=dialog.querySelector('#group-title-edit'),save=dialog.querySelector('#group-title-save');
   let storedName=record.group||'',storedTheme=initialTheme,pending=Promise.resolve(true);
   const paintTheme=()=>{select.querySelectorAll('input').forEach(input=>{input.checked=input.value===storedTheme;});};
-  const patch=async values=>update(s=>{for(const id of ids){const r=s.records.find(r=>r.id===id);if(!r)throw new Error('기록이 변경됐어요. 다시 열어주세요.');Object.assign(r,values);}});
+  const patch=async values=>update(s=>patchGroup(s,record.groupId,values));
   const saveTitle=()=>pending=pending.then(async()=>{
     if(input.hidden)return true;
     const name=input.value.trim();input.disabled=true;save.disabled=true;
-    const ok=name===storedName||await patch({group:name});input.disabled=false;save.disabled=false;
+    const ok=name===storedName||await patch({title:name});input.disabled=false;save.disabled=false;
     if(!ok){input.focus();return false;}
     storedName=name;label.textContent=name||'해낸 일';input.hidden=true;editor.hidden=true;heading.hidden=false;edit.hidden=false;render();return true;
   });
@@ -164,7 +165,7 @@ async function saveRecord(record) {
     const editing=data().records.some(r=>r.id===record.id);
     const duplicate=data().records.some(r=>r.id!==record.id&&r.date===record.date&&r.text===record.text&&[...r.themes].sort().join() === [...record.themes].sort().join());
     if(duplicate){toast('같은 날짜에 같은 기록이 있어요. 기존 기록을 확인해주세요.');return;}
-    if(!await update(s=>{const index=s.records.findIndex(r=>r.id===record.id); if(index<0)s.records.push(record);else s.records[index]=record;}))return;
+    if(!await update(s=>putRecord(s,record)))return;
     selected=record.date;month=selected.slice(0,7);filter='';page='today';render();
     if(editing){groupDetail(record.id);toast('수정한 내용을 저장했어요.');return;}
     const future=record.themes.map(id=>data().futures[id]).find(Boolean);
@@ -174,7 +175,7 @@ function download(value,name) { const blob=new Blob([value],{type:'application/j
 // shortcut: 열린 페이지에서만 알림을 검사한다. 닫힌 앱 알림은 서버 푸시 연결이 필요하다.
 async function reminderCheck() {
   if(!localMode)return;
-  if(demo||storageBlocked||!state.reminder||state.rest.includes(today())||state.records.some(r=>r.date===today())||state.snoozed[today()]>Date.now())return;
+  if(demo||storageBlocked||!state.reminder||state.rest.includes(today())||state.groups.some(g=>g.date===today())||state.snoozed[today()]>Date.now())return;
   const time=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Seoul',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date());
   if(time<state.reminder)return;
   if(!await update(s=>s.snoozed[today()]=Date.now()+24*60*60*1000))return;
@@ -206,7 +207,7 @@ async function action(event) {
     showDialog(`${closeButton}<h2>이 기록을 삭제할까요?</h2><p>해당 테마의 마지막 기록이면 도장과 꽃 단계도 함께 바뀌어요.</p><div class="inline-actions"><button data-action="close" class="secondary">취소</button><button id="confirm-delete" class="danger">기록 삭제</button></div>`);
     document.querySelector('#confirm-delete').onclick=async()=>{if(await update(s=>s.records=s.records.filter(r=>r.id!==id))){dialog.close();render();toast('기록을 삭제했어요.');}};return;
   }
-  if(kind==='export'){download(JSON.stringify(data(),null,2),`bomi-${demo?'example-':''}${today()}.json`);return;}
+  if(kind==='export'){download(JSON.stringify(demo?demoData:state,null,2),`bomi-${demo?'example-':''}${today()}.json`);return;}
   if(kind==='raw-export'){download(lastRaw||'null',`bomi-original-${today()}.json`);return;}
   if(kind==='reminder-off'){if(await update(s=>s.reminder='')){render();toast('알림을 껐어요.');}return;}
   if(kind==='notification-test'){
@@ -223,7 +224,7 @@ document.addEventListener('submit',async event=>{
     try { const old=data().records.find(r=>r.id===form.dataset.id);const record=validateRecord({id:old?.id||crypto.randomUUID(),date:old?.date||selected,text:fd.get('text'),summary:fd.get('summary'),group:old?old.group:fd.get('group'),result:old?.result||'',themes:old?old.themes:fd.getAll('themes'),saved:old?.saved||false},today(),!!old);await saveRecord(record); }
     catch(error){form.querySelector('.form-error').textContent=error.message;}return;
   }
-  if(form.id==='future-form'){if(await update(s=>{for(const t of THEMES)s.futures[t.id]=fd.get(t.id).trim();s.onboarded=true;})){toast('바라는 미래를 저장했어요.');}return;}
+  if(form.id==='future-form'){if(await update(s=>{for(const t of THEMES)s.futures[t.id]=fd.get(t.id).trim();})){toast('바라는 미래를 저장했어요.');}return;}
   if(form.id==='review-form'){if(await update(s=>s.reviews[reviewDate]={mood:fd.get('mood')||'',note:fd.get('note').trim()}))toast('이번 주의 이야기를 저장했어요.');return;}
   if(form.id==='reminder-form'){if(await update(s=>{s.reminder=fd.get('time');delete s.snoozed[today()];}))toast(fd.get('time')?(cloud?'시각을 저장했어요. 이 기기의 알림 받기도 켜주세요.':'보미가 열려 있을 때 이 시각부터 알림을 확인할게요.'):'알림을 껐어요.');return;}
 });
@@ -235,7 +236,7 @@ document.addEventListener('change',async event=>{
     const incoming=validateState(JSON.parse(await file.text()));
     showDialog(`${closeButton}<h2>백업 ${incoming.records.length}건을 가져올까요?</h2><p>현재 기록을 자동으로 백업한 다음, 선택한 파일의 내용으로 바꿔요.</p><div class="inline-actions"><button data-action="close" class="secondary">취소</button><button id="confirm-import" class="primary">백업하고 가져오기</button></div>`);
     document.querySelector('#confirm-import').onclick=async()=>{
-      download(storageBlocked?lastRaw:JSON.stringify(data(),null,2),`bomi-before-import-${today()}.json`);
+      download(storageBlocked?lastRaw:JSON.stringify(demo?demoData:state,null,2),`bomi-before-import-${today()}.json`);
       if(storageBlocked){toast('읽지 못한 원본은 보존했어요. 복구를 확인하기 전에는 교체하지 않아요.');return;}
       if(await update(s=>Object.assign(s,incoming))){dialog.close();render();toast('백업을 가져왔어요.');}
     };
@@ -352,30 +353,27 @@ function showCodexStatus(result) {
   codexTimer=setTimeout(async()=>{if(!dialog.open||dialog.dataset.codex!=='pending')return;try{const state=await codexApi('status');if(dialog.open&&dialog.dataset.codex==='pending')showCodexStatus(state);}catch{if(dialog.open&&dialog.dataset.codex==='pending')showDialog(`${closeButton}<h2>연결이 잠시 끊겼어요</h2><p>요청은 보존돼요. 다시 연결하면 진행 상태를 확인할 수 있어요.</p><button class="primary full" data-action="codex">상태 다시 확인</button>`);}},3000);
 }
 function reviewCodex(job) {
-  showDialog(`${closeButton}<h2>정리한 일을 확인해주세요</h2>${job.records.some(r=>!r.themes.length)?'<p class="error" role="status">테마가 없는 항목을 펼쳐두었어요. 테마를 고르거나 해당 항목의 기록 체크를 해제해주세요.</p>':''}<form id="codex-review">${groupRecords(job.records).map(([name,items])=>`<section class="work-group"><h3 class="work-group-title">${esc(name||'기타 작업')}</h3>${items.map(r=>{const i=job.records.indexOf(r);return `<details class="codex-draft" ${r.themes.length?'':'open'}><summary><span class="draft-heading"><strong>${esc(r.summary||r.text)}</strong><span class="draft-themes">${THEMES.filter(t=>r.themes.includes(t.id)).map(t=>t.name).join(' · ')||'연결된 테마 없음'}</span></span><span class="draft-chevron" aria-hidden="true">⌄</span></summary><div class="draft-body"><label class="draft-include"><input type="checkbox" name="include" value="${i}" checked> 이 일 기록하기</label>${data().records.some(old=>old.id===r.id)?'<p class="quiet">이미 가져온 기록이에요. 확인하면 아래 내용으로 갱신돼요.</p>':''}<label for="codex-group-${i}">작업 묶음</label><input id="codex-group-${i}" name="group-${i}" maxlength="80" value="${esc(r.group||'')}"><label for="codex-summary-${i}">목록에 보일 한 줄</label><input id="codex-summary-${i}" name="summary-${i}" maxlength="80" value="${esc(r.summary||'')}"><label for="codex-text-${i}">실제로 한 일 · 상세</label><textarea id="codex-text-${i}" name="text-${i}" maxlength="1000">${esc(r.text)}</textarea><label for="codex-result-${i}">남은 결과</label><textarea id="codex-result-${i}" name="result-${i}" maxlength="1000">${esc(r.result)}</textarea><fieldset class="theme-picker"><legend>연결할 테마</legend>${THEMES.map(t=>`<label><input type="checkbox" name="themes-${i}" value="${t.id}" ${r.themes.includes(t.id)?'checked':''}><span>${t.name}</span></label>`).join('')}</fieldset></div></details>`;}).join('')}</section>`).join('')}${job.records.length?'':'<p class="empty">확인할 수 있는 완료 내역이 없어요. 활동을 하지 않았다는 뜻은 아니에요.</p>'}<p class="form-error" role="alert"></p><div class="inline-actions">${job.records.length?`<button class="primary">${cloud?'확인한 일 서버에 저장':'확인한 일 기록하기'}</button>`:''}<button type="button" id="discard-codex" class="secondary">이번 초안 닫기</button></div></form>`);
-  document.querySelector('#codex-review').onchange=event=>{
-    const item=event.target.closest('.codex-draft');
-    if(!item)return;
-    const themes=[...item.querySelectorAll('.theme-picker input:checked')].map(input=>THEMES.find(t=>t.id===input.value).name);
-    item.querySelector('.draft-themes').textContent=item.querySelector('[name="include"]').checked?(themes.join(' · ')||'연결된 테마 없음'):'기록에서 제외';
-  };
+  // Older pending requests remain reviewable without rewriting their source files.
+  const groups=job.groups||groupRecords(job.records||[]).map(([title,items])=>({id:`import:${items[0].id}`,title,themes:[...new Set(items.flatMap(r=>r.themes))],items}));
+  showDialog(`${closeButton}<h2>정리한 일을 확인해주세요</h2><form id="codex-review">${groups.map((g,gi)=>`<section class="work-group"><label for="codex-group-${gi}">묶음 제목</label><input id="codex-group-${gi}" name="group-${gi}" maxlength="80" value="${esc(g.title)}"><fieldset class="theme-picker"><legend>묶음 테마</legend>${THEMES.map(t=>`<label style="--accent:${t.color}"><input type="radio" name="group-theme-${gi}" value="${t.id}" ${g.themes.length===1&&g.themes[0]===t.id?'checked':''}><span>${themeIcons[t.id]}${t.name}</span></label>`).join('')}</fieldset>${g.items.map((r,ri)=>{const key=`${gi}-${ri}`;return `<details class="codex-draft"><summary><span class="draft-heading"><strong>${esc(r.summary||r.text)}</strong></span><span class="draft-chevron" aria-hidden="true">⌄</span></summary><div class="draft-body"><label class="draft-include"><input type="checkbox" name="include" value="${key}" checked> 이 일 기록하기</label><label for="codex-summary-${key}">목록에 보일 한 줄 · 선택</label><input id="codex-summary-${key}" name="summary-${key}" maxlength="80" value="${esc(r.summary||'')}"><label for="codex-text-${key}">실제로 한 일 · 상세</label><textarea id="codex-text-${key}" name="text-${key}" maxlength="1000">${esc(r.text)}</textarea></div></details>`;}).join('')}</section>`).join('')}${groups.length?'':'<p class="empty">확인할 수 있는 완료 내역이 없어요.</p>'}<p class="form-error" role="alert"></p><div class="inline-actions">${groups.length?`<button class="primary">확인한 일 기록하기</button>`:''}<button type="button" id="discard-codex" class="secondary">이번 초안 닫기</button></div></form>`);
   document.querySelector('#discard-codex').onclick=async()=>{try{await codexApi('close',{id:job.id});dialog.close();}catch{toast('연결 상태를 확인해주세요.');}};
   document.querySelector('#codex-review').onsubmit=async event=>{
     event.preventDefault();const f=event.currentTarget,fd=new FormData(f);
     try {
-      for(const value of fd.getAll('include')){const i=Number(value);if(!fd.getAll(`themes-${i}`).length){const input=f.querySelector(`[name="themes-${i}"]`);input.closest('.codex-draft').open=true;input.focus();throw new Error(`테마를 선택해주세요: ${job.records[i].text.slice(0,60)}`);}}
-      const records=fd.getAll('include').map(value=>{const i=Number(value),draft=job.records[i];return validateRecord({...draft,summary:fd.get(`summary-${i}`),group:fd.get(`group-${i}`),text:fd.get(`text-${i}`),result:fd.get(`result-${i}`),themes:fd.getAll(`themes-${i}`),saved:data().records.find(r=>r.id===draft.id)?.saved||false});});
-      if(!records.length)throw new Error('실제로 한 일을 한 개 이상 선택해주세요.');
+      const entries=fd.getAll('include').map(key=>{
+        const [gi,ri]=key.split('-').map(Number),g=groups[gi],draft=g.items[ri],themes=fd.getAll(`group-theme-${gi}`);
+        if(!themes.length){f.querySelector(`[name="group-theme-${gi}"]`).focus();throw new Error(`묶음 테마를 선택해주세요: ${g.title||'해낸 일'}`);}
+        return {groupId:g.id,record:validateRecord({...draft,date:job.date,summary:fd.get(`summary-${key}`),group:fd.get(`group-${gi}`),text:fd.get(`text-${key}`),result:draft.result||'',themes,saved:data().records.find(r=>r.id===draft.id)?.saved||false})};
+      });
+      if(!entries.length)throw new Error('실제로 한 일을 한 개 이상 선택해주세요.');
       if(cloud?.pending().length)throw new Error('이전에 저장하던 입력을 먼저 복구해주세요.');
-      if(!await update(s=>{for(const record of records){const index=s.records.findIndex(r=>r.id===record.id);if(index<0)s.records.push(record);else s.records[index]={...record,saved:s.records[index].saved};}}))return;
-      // Local records are committed first; a failed acknowledgement remains safely repeatable by stable IDs.
+      if(!await update(s=>{for(const {groupId,record} of entries){putRecord(s,record,groupId);patchGroup(s,groupId,{title:record.group||'',themes:record.themes});}}))return;
       let acknowledged=true;try{await codexApi('close',{id:job.id});}catch{acknowledged=false;}
       selected=job.date;month=selected.slice(0,7);page='today';filter='';render();
-      showDialog(`${closeButton}<div class="celebration">${flower(activeThemes(data().records,selected),'pop')}<h2>해낸 일 ${records.length}개를 기록했어요.</h2><p>확인한 테마를 도장과 꽃에 반영했어요.</p>${acknowledged?'':'<p class="footnote">기록은 저장했지만 요청 종료 확인이 지연됐어요. 다시 확인해도 같은 기록은 중복되지 않아요.</p>'}<button class="primary full" data-action="close">내 기록 보기</button></div>`);
+      showDialog(`${closeButton}<div class="celebration">${flower(activeThemes(data().records,selected),'pop')}<h2>해낸 일 ${entries.length}개를 기록했어요.</h2><p>확인한 묶음의 테마를 도장과 꽃에 반영했어요.</p>${acknowledged?'':'<p class="footnote">기록은 저장했지만 요청 종료 확인이 지연됐어요. 다시 확인해도 중복되지 않아요.</p>'}<button class="primary full" data-action="close">내 기록 보기</button></div>`);
     } catch(error){f.querySelector('.form-error').textContent=error.message;}
   };
 }
-
 
 function cloudSettings() {
   return `<div class="page-heading"><h1>기록과 알림을 설정해요.</h1></div><div class="settings-grid"><section class="card"><span class="pill">내 계정에 저장</span><h2>나의 기록 보관</h2><button class="text-button" data-action="codex-settings">이 컴퓨터의 Codex 연결 설정</button><p>같은 계정에서 저장한 기록은 모든 기기에 자동으로 반영돼요.</p><div class="inline-actions"><button class="secondary" data-action="export">기록 백업하기 ↓</button><label class="secondary file-label">백업 가져오기<input type="file" id="import-file" accept="application/json,.json"></label><a class="secondary" href="/cdn-cgi/access/logout">로그아웃</a></div><p class="footnote">로컬 보미에서 백업한 파일을 가져올 수 있어요. 가져오기는 현재 기록을 교체하므로 먼저 양쪽을 백업해주세요.</p></section><section class="card"><h2>하루를 챙기는 알림</h2><p>알림을 받을 기기마다 아래 버튼으로 허용해주세요. 아이폰은 먼저 홈 화면에 보미를 추가해주세요.</p><form id="reminder-form"><label for="reminder-time">알림 받을 시각 · 한국시간</label><input type="time" id="reminder-time" name="time" value="${esc(data().reminder)}"><div class="inline-actions"><button class="primary">시각 저장</button><button type="button" data-action="reminder-off">하루 알림 끄기</button></div></form><div class="inline-actions"><button class="secondary" data-action="cloud-push">이 기기에서 알림 받기</button><button class="text-button" data-action="cloud-unsubscribe">이 기기 알림 해제</button></div></section></div>`;
