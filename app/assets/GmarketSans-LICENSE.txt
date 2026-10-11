@@ -24,7 +24,7 @@ This Font Software is licensed under the SIL Open Font License, Version 1.1.
 
 "Author" refers to any designer, engineer, programmer, technical writer or other person who contributed to the Font Software.
 
- 
+
 
 [PREAMBLE]
 
@@ -40,7 +40,7 @@ The fonts and derivatives, however, cannot be released under any other type of l
 
 The requirement for fonts to remain under this license does not apply to any document created using the fonts or their derivatives.
 
- 
+
 
 [PERMISSION & CONDITIONS]
 
@@ -61,7 +61,7 @@ permission is granted by the corresponding Copyright Holder. This restriction on
 
 6) Any images of the production such as printouts, advertisement materials, online videos using the Font Software, modified or unmodified, in part or in whole, may be utilized as means of promoting the Font Software in discretion of the Copyright Holder unless explicitly expressed the rejection of utilization to the Copyright Holder with specific terms.
 
- 
+
 
 [TERMINATION]
 
@@ -99,7 +99,7 @@ THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
 
 -정확한 사용 조건은 아래 라이선스 전문을 참고하여 주십시오. 아래 라이선스 전문의 법적 효력은 영문에 한하고, 한글은 이용자의 이해를 돕기 위하여 제공되었습니다.
 
- 
+
 
 [라이선스]
 
@@ -108,7 +108,7 @@ with Reserved Font Name <Gmarket Sans Font>.
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 
- 
+
 
 [정의]
 
@@ -122,7 +122,7 @@ This Font Software is licensed under the SIL Open Font License, Version 1.1.
 
 ‘저자’는 폰트 소프트웨어에 기여한 디자이너, 엔지니어, 프로그래머, 기술 전문가 등을 의미합니다.
 
- 
+
 
 [전문]
 
@@ -130,13 +130,13 @@ This Font Software is licensed under the SIL Open Font License, Version 1.1.
 
 OFL은 라이선스를 취득한 폰트가 그 자체로 판매되지 않는 한 자유롭게 사용, 연구, 수정, 재배포 하는 것을 허가합니다. 수정된 폰트를 포함한 폰트는 저작권 명이 사용되지 않는 한 기타 소프트웨어와 함께 묶이거나 삽입, 재배포 할 수 있습니다. 단 폰트와 수정된 폰트는 기타 다른 라이선스에 포함되어 배포될 수는 없습니다. 이 라이선스 하에 있기 위한 폰트에 대한 요구사항은 본 폰트나 수정본을 사용하여 제작된 어떠한 문서에도 적용되지 않습니다.
 
- 
+
 
 [허가 및 조건]
 
  본 폰트 소프트웨어를 사용하도록 허가 받은 개인/기업/단체 누구라도 다음 명시된 조건에 따라 폰트 소프트웨어의 수정 혹은 수정되지 않은 복사본을 무료로 사용, 연구, 복사, 통합, 삽입, 수정, 재배포할 수 있도록 허가합니다.
 
- 
+
 
 1) 원본이나 수정본의 폰트 소프트웨어 혹은 개별 구성요소인 폰트 자체가 판매되어서는 안됩니다.
 
@@ -150,13 +150,13 @@ OFL은 라이선스를 취득한 폰트가 그 자체로 판매되지 않는 한
 
 6) 본 폰트 소프트웨어의 전체나 부분, 혹은 수정 여부에 상관없이 사용된 제작물, 예를 들어 인쇄물, 홍보물, 온라인 영상 등의 이미지는 본 폰트 소프트웨어의 홍보를 위한 수단으로 활용될 수 있으나, 활용에 대한 거부의사는 구체적인 조건과 함께 저작권자에게 표시하여야 합니다.
 
- 
+
 
 [계약의 종료]
 
 본 라이선스는 상기 조건 중 일부라도 부합되지 않으면 무효가 될 수 있습니다.
 
- 
+
 
 [면책조항]
 
