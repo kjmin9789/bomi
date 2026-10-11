@@ -75,3 +75,5 @@ dialog > .group-tags{justify-content:flex-start;margin:0 0 12px}.record-mark svg
 .work-group-open .work-group-title{min-width:0;font-size:16px}
 .work-group-open .count,.group-chevron{flex-shrink:0}
 .group-chevron{color:var(--muted)}
+
+dialog #group-theme.theme-picker{margin-top:14px}
