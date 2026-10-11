@@ -98,7 +98,7 @@ test('이전 백업 호환과 반복 질문·답변 보존, 중복 및 잘못된
   assert.deepEqual(validateState(s).routines,[]);
   s.routines=[{id:'test',title:'복습',kind:'activity',days:[0],time:'10:00',before:'',enabled:true}];
   s.checkins=[{key:'2026-10-04:test',routineId:'test',date:'2026-10-04',title:'복습',answer:'done',bedtime:'',before:''}];
-  assert.deepEqual(validateState(s).checkins,s.checkins);
+  assert.deepEqual(validateState(s).checkins,s.checkins.map(({bedtime,before,...answer})=>answer));
   assert.equal(flowerStage(activeThemes(validateState(s).records,'2026-10-04')),0);
   for(const patch of [{days:[]},{days:[1,1]},{days:[7]},{time:'24:00'},{enabled:'true'},{id:'<unsafe>'}])assert.throws(()=>validateRoutine({...s.routines[0],...patch}));
   assert.throws(()=>validateState({...s,checkins:[...s.checkins,...s.checkins]}));
@@ -175,4 +175,19 @@ test('루틴 메모는 백업에서도 보존하고 빈 값과 이전 일정도 
   assert.equal(validateRoutine({...r,memo:''}).memo,undefined);
   assert.throws(()=>validateRoutine({...r,memo:'a'.repeat(501)}));
   assert.throws(()=>validateRoutine({...r,memo:42}));
+});
+
+test('날짜별 테마 인덱스는 중복 및 과거 테마가 있어도 기존 꽃 계산과 같다',async()=>{
+  const {themesByDate}=await import('../app/model.js');
+  const records=[record('a','2026-10-10',['health','career']),record('b','2026-10-10',['health']),record('c','2026-10-11',['money','family'])];
+  const indexed=themesByDate(records);
+  for(const date of ['2026-10-10','2026-10-11'])assert.deepEqual(indexed.get(date),activeThemes(records,date));
+  assert.equal(indexed.has('2026-10-12'),false);
+});
+test('일반 루틴과 완료 답변은 불필요한 빈 취침 필드를 저장하지 않는다',async()=>{
+  const {validateRoutine,validateCheckin}=await import('../app/model.js');
+  const routine=validateRoutine({id:'test',title:'운동',kind:'activity',days:[1],time:'08:00',enabled:true,before:'',themes:['health']});
+  assert.equal('before' in routine,false);
+  const answer=validateCheckin({key:'2026-10-10:test',routineId:'test',date:'2026-10-10',title:'운동',answer:'done',bedtime:'',before:''},new Date('2026-10-12T00:00:00Z'));
+  assert.equal('before' in answer,false);assert.equal('bedtime' in answer,false);
 });
