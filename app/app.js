@@ -1,3 +1,4 @@
+import {api, CloudStore, enablePush, disablePush} from './cloud.js';
 import {ALL_THEMES,THEMES,today,shiftDate,weekStart,activeThemes,flowerStage,validateRecord,emptyState,validateState,weekSummary,demoState} from './model.js';
 // Wanted Montage IconCheckThick (MIT); see THIRD_PARTY_NOTICES.md.
 const stampCheck = '<svg viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" focusable="false"><path d="M19.6697 6.58096C20.1774 7.08864 20.1774 7.91175 19.6697 8.41943L10.6697 17.4194C10.1621 17.9271 9.33894 17.9271 8.83126 17.4194L4.33126 12.9194C3.82358 12.4118 3.82358 11.5886 4.33126 11.081C4.83894 10.5733 5.66206 10.5733 6.16974 11.081L9.7505 14.6617L17.8313 6.58096C18.3389 6.07327 19.1621 6.07327 19.6697 6.58096Z" fill="currentColor"/></svg>';
@@ -5,9 +6,11 @@ const themeIcons = {"money": "<svg viewBox=\"0 0 24 24\" width=\"1em\" height=\"
 const navIcons = {"today": "<svg viewBox=\"0 0 24 24\" fill=\"none\" width=\"1em\" height=\"1em\" aria-hidden=\"true\" focusable=\"false\"><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M12.3616 2.27647C12.1248 2.21318 11.8755 2.21318 11.6387 2.27647C11.3579 2.3515 11.1251 2.5333 11.0025 2.62905L10.9675 2.65625L4.13427 7.88153C3.74746 8.17676 3.42128 8.42572 3.17853 8.75002C2.96523 9.03498 2.80621 9.35676 2.70942 9.69929C2.59927 10.0891 2.59965 10.4995 2.60009 10.9861L2.60015 17.335C2.60014 17.8648 2.60012 18.316 2.63039 18.6865C2.66218 19.0756 2.73182 19.4542 2.91623 19.8161C3.19426 20.3618 3.6379 20.8055 4.18357 21.0835C4.5455 21.2679 4.9241 21.3375 5.31326 21.3693C5.68367 21.3996 6.13483 21.3996 6.66467 21.3996H11.9898C11.9933 21.3996 11.9969 21.3996 12.0004 21.3996C12.0039 21.3996 12.0075 21.3996 12.011 21.3996H17.3355C17.8653 21.3996 18.3166 21.3996 18.687 21.3693C19.0761 21.3375 19.4547 21.2679 19.8167 21.0835C20.3623 20.8055 20.806 20.3618 21.084 19.8161C21.2684 19.4542 21.338 19.0756 21.3698 18.6865C21.4001 18.316 21.4001 17.8649 21.4001 17.335L21.4001 10.9861C21.4006 10.4994 21.401 10.0891 21.2908 9.69929C21.194 9.35676 21.035 9.03498 20.8217 8.75002C20.5789 8.42572 20.2528 8.17677 19.866 7.88153L13.0328 2.65625L12.9977 2.62905C12.8751 2.5333 12.6423 2.3515 12.3616 2.27647ZM12.9004 19.5994H17.7001C18.5147 19.5994 18.7085 19.5883 18.84 19.5456C19.1749 19.4368 19.4374 19.1742 19.5463 18.8393C19.589 18.7078 19.6001 18.514 19.6001 17.6994V10.883C19.6001 10.4628 19.5965 10.3673 19.5816 10.2869C19.5445 10.0871 19.4528 9.90143 19.3166 9.75057C19.2618 9.68986 19.1881 9.62903 18.8542 9.37376L12.0001 4.1324L5.146 9.37376C4.81217 9.62903 4.73848 9.68986 4.68367 9.75057C4.54748 9.90143 4.45574 10.0871 4.41864 10.2869C4.4037 10.3673 4.40015 10.4628 4.40015 10.883V17.6994C4.40015 18.514 4.41126 18.7078 4.45399 18.8393C4.5628 19.1742 4.82535 19.4368 5.16023 19.5456C5.29175 19.5883 5.48559 19.5994 6.30014 19.5994H11.1004V13.9996C11.1004 13.5026 11.5033 13.0996 12.0004 13.0996C12.4975 13.0996 12.9004 13.5026 12.9004 13.9996V19.5994Z\" fill=\"currentColor\" /></svg>", "future": "<svg viewBox=\"0 0 24 24\" fill=\"none\" width=\"1em\" height=\"1em\" aria-hidden=\"true\" focusable=\"false\"><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M5.15007 16.1492L5.2776 16.1067C7.47391 15.3746 9.86668 15.5071 11.9687 16.4773L12.3451 16.651C14.1477 17.4829 16.1433 17.8068 18.1165 17.5875L18.5151 17.5432C19.7305 17.4082 20.6501 16.3808 20.6501 15.1579V4.50049C20.6501 4.24449 20.541 4.00061 20.3503 3.82988C20.1595 3.65914 19.9051 3.57773 19.6507 3.606L17.9177 3.79854C16.2704 3.98158 14.6043 3.71122 13.0994 3.01663L12.0873 2.5495C9.97785 1.57593 7.57668 1.44294 5.37266 2.17761C4.16479 2.58023 3.35007 3.7106 3.35007 4.98381V15.4795C3.34974 15.4934 3.34974 15.5073 3.35007 15.5212V21.0005C3.35007 21.4975 3.75301 21.9005 4.25007 21.9005C4.74712 21.9005 5.15007 21.4975 5.15007 21.0005V16.1492ZM11.333 4.18383C9.63933 3.40215 7.71145 3.29538 5.94187 3.88524C5.46901 4.04286 5.15007 4.48537 5.15007 4.98381V14.2621C7.65732 13.5429 10.3454 13.7456 12.723 14.8429L13.0994 15.0166C14.6043 15.7112 16.2704 15.9816 17.9177 15.7985L18.3163 15.7543C18.6202 15.7205 18.8501 15.4637 18.8501 15.1579V5.50603L18.1165 5.58754C16.1433 5.80678 14.1477 5.48294 12.3451 4.65096L11.333 4.18383Z\" fill=\"currentColor\" /></svg>", "review": "<svg viewBox=\"0 0 24 24\" fill=\"none\" width=\"1em\" height=\"1em\" aria-hidden=\"true\" focusable=\"false\"><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M9.39998 2.4C9.39998 1.90294 8.99703 1.5 8.49998 1.5C8.00292 1.5 7.59998 1.90294 7.59998 2.4V3.49978H6.9148C6.38495 3.49977 5.93375 3.49975 5.56333 3.53002C5.17417 3.56182 4.79558 3.63145 4.43364 3.81586C3.88798 4.0939 3.44433 4.53754 3.1663 5.08321C2.98189 5.44514 2.91226 5.82374 2.88046 6.2129C2.8502 6.58331 2.85021 7.03446 2.85022 7.5643V17.7352C2.85021 18.265 2.8502 18.7163 2.88046 19.0867C2.91226 19.4758 2.98189 19.8544 3.1663 20.2164C3.44433 20.762 3.88798 21.2057 4.43364 21.4837C4.79558 21.6681 5.17417 21.7377 5.56333 21.7695C5.93374 21.7998 6.38488 21.7998 6.91471 21.7998H17.0856C17.6154 21.7998 18.0666 21.7998 18.437 21.7695C18.8262 21.7377 19.2048 21.6681 19.5667 21.4837C20.1124 21.2057 20.556 20.762 20.8341 20.2164C21.0185 19.8544 21.0881 19.4758 21.1199 19.0867C21.1502 18.7163 21.1502 18.2651 21.1502 17.7353V7.56438C21.1502 7.03455 21.1502 6.58331 21.1199 6.2129C21.0881 5.82374 21.0185 5.44514 20.8341 5.08321C20.556 4.53754 20.1124 4.0939 19.5667 3.81586C19.2048 3.63145 18.8262 3.56182 18.437 3.53002C18.0666 3.49975 17.6155 3.49977 17.0856 3.49978H16.4V2.40002C16.4 1.90297 15.997 1.50002 15.5 1.50002C15.0029 1.50002 14.6 1.90297 14.6 2.40002V3.49978H9.39998V2.4ZM14.6 6.40002V5.29978H9.39998V6.4C9.39998 6.89706 8.99703 7.3 8.49998 7.3C8.00292 7.3 7.59998 6.89706 7.59998 6.4V5.29978H6.55023C5.73567 5.29978 5.54184 5.31088 5.41032 5.35361C5.07543 5.46242 4.81288 5.72498 4.70407 6.05986C4.66134 6.19138 4.65024 6.38521 4.65024 7.19978V9.24976H19.3502V7.19978C19.3502 6.38521 19.3391 6.19138 19.2963 6.05986C19.1875 5.72498 18.925 5.46242 18.5901 5.35361C18.4586 5.31088 18.2647 5.29978 17.4502 5.29978H16.4V6.40002C16.4 6.89708 15.997 7.30002 15.5 7.30002C15.0029 7.30002 14.6 6.89708 14.6 6.40002ZM19.3502 11.0498H4.65024V18.0998C4.65024 18.9143 4.66134 19.1082 4.70407 19.2397C4.81288 19.5746 5.07543 19.8371 5.41032 19.9459C5.54184 19.9887 5.73567 19.9998 6.55023 19.9998H17.4502C18.2647 19.9998 18.4586 19.9887 18.5901 19.9459C18.925 19.8371 19.1875 19.5746 19.2963 19.2397C19.3391 19.1082 19.3502 18.9143 19.3502 18.0998V11.0498Z\" fill=\"currentColor\" /></svg>", "saved": "<svg viewBox=\"0 0 24 24\" fill=\"none\" width=\"1em\" height=\"1em\" aria-hidden=\"true\" focusable=\"false\"><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M8.16444 2.59985H15.8352C16.365 2.59984 16.8163 2.59983 17.1867 2.63009C17.5759 2.66189 17.9544 2.73152 18.3164 2.91594C18.862 3.19397 19.3057 3.63761 19.5837 4.18328C19.7681 4.54522 19.8378 4.92381 19.8696 5.31297C19.8998 5.6834 19.8998 6.13458 19.8998 6.66445V21.4999C19.8998 21.8249 19.7245 22.1248 19.4412 22.2842C19.1579 22.4436 18.8106 22.4379 18.5327 22.2692L11.9998 18.3028L5.46693 22.2692C5.18905 22.4379 4.84179 22.4436 4.55848 22.2842C4.27517 22.1248 4.09985 21.8249 4.09985 21.4999V6.66445C4.09984 6.13461 4.09983 5.68339 4.13009 5.31297C4.16189 4.92381 4.23152 4.54522 4.41594 4.18328C4.69397 3.63761 5.13761 3.19397 5.68328 2.91594C6.04521 2.73152 6.4238 2.66189 6.81296 2.63009C7.18337 2.59983 7.63461 2.59984 8.16444 2.59985ZM7.79988 4.39992C6.98532 4.39992 6.79148 4.41103 6.65996 4.45376C6.32508 4.56257 6.06253 4.82512 5.95372 5.16001C5.91099 5.29153 5.89988 5.48536 5.89988 6.29992V19.9006L11.5328 16.4806C11.8198 16.3064 12.1799 16.3064 12.4669 16.4806L18.0998 19.9006V6.29992C18.0998 5.48536 18.0887 5.29153 18.046 5.16001C17.9372 4.82512 17.6746 4.56257 17.3398 4.45376C17.2082 4.41103 17.0144 4.39992 16.1998 4.39992H7.79988Z\" fill=\"currentColor\" /></svg>", "settings": "<svg viewBox=\"0 0 24 24\" fill=\"none\" width=\"1em\" height=\"1em\" aria-hidden=\"true\" focusable=\"false\"><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M8.04978 12C8.04978 9.81848 9.81824 8.05 11.9998 8.05C14.1813 8.05 15.9497 9.81848 15.9497 12C15.9497 14.1815 14.1813 15.95 11.9998 15.95C9.81824 15.95 8.04978 14.1815 8.04978 12ZM11.9998 9.95C10.8676 9.95 9.94977 10.8678 9.94977 12C9.94977 13.1322 10.8676 14.05 11.9998 14.05C13.1319 14.05 14.0498 13.1322 14.0498 12C14.0498 10.8678 13.1319 9.95 11.9998 9.95Z\" fill=\"currentColor\" /> <path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M10.131 1.97079C10.7375 1.85842 11.3622 1.7998 11.9998 1.7998C12.6373 1.7998 13.262 1.85841 13.8685 1.97079C14.91 2.16373 15.3502 3.11319 15.4926 3.70446C15.589 4.10473 15.8414 4.46312 16.2246 4.68433C16.6074 4.90536 17.0436 4.94495 17.4382 4.82865C18.0214 4.65674 19.0614 4.56445 19.749 5.36716C20.5589 6.31261 21.1993 7.40878 21.6221 8.60855C21.9736 9.60576 21.3725 10.4599 20.9322 10.8783C20.6337 11.1619 20.4496 11.5597 20.4496 12.0022C20.4496 12.4444 20.6335 12.842 20.9317 13.1256C21.3718 13.5442 21.9725 14.3986 21.6205 15.3956C21.1964 16.5973 20.5539 17.695 19.7415 18.6412C19.055 19.4408 18.0185 19.3502 17.4362 19.1795C17.0422 19.064 16.607 19.1039 16.2249 19.3245C15.8429 19.545 15.5908 19.9019 15.4937 20.3007C15.3502 20.8905 14.9095 21.8357 13.8712 22.0283C13.2638 22.141 12.6382 22.1998 11.9998 22.1998C11.3615 22.1998 10.7361 22.1411 10.1289 22.0284C9.09016 21.8358 8.64947 20.89 8.50609 20.3001C8.40912 19.9012 8.15698 19.5441 7.77485 19.3235C7.39266 19.1028 6.9573 19.063 6.56327 19.1786C5.98082 19.3494 4.94393 19.4403 4.25726 18.6403C3.44569 17.6949 2.80382 16.5983 2.37979 15.3978C2.02766 14.4009 2.62805 13.5464 3.06801 13.1277C3.36596 12.8442 3.54974 12.4467 3.54974 12.0046C3.54974 11.5621 3.36551 11.1641 3.06692 10.8805C2.62657 10.4623 2.02535 9.60831 2.3765 8.61109C2.7991 7.41098 3.43935 6.31446 4.2492 5.36869C4.93695 4.56551 5.97742 4.658 6.56079 4.83006C6.95543 4.94645 7.39173 4.90689 7.77465 4.68582C8.15798 4.4645 8.41054 4.10587 8.50681 3.70537C8.649 3.11389 9.08914 2.16382 10.131 1.97079ZM10.4986 3.83504C10.4943 3.83949 10.4882 3.84629 10.4804 3.85628C10.4386 3.91001 10.3876 4.01039 10.3542 4.14947C10.1412 5.03543 9.5776 5.83881 8.72465 6.33126C7.87264 6.82317 6.89631 6.90993 6.0233 6.65245C5.88632 6.61205 5.77405 6.60604 5.70654 6.61545C5.69368 6.61725 5.68458 6.61918 5.67848 6.62077C5.02983 7.38223 4.51682 8.26159 4.17593 9.22152C4.1776 9.2275 4.18044 9.23613 4.18518 9.2478C4.21072 9.31067 4.27198 9.40465 4.37543 9.50291C5.03595 10.1303 5.44973 11.0199 5.44973 12.0046C5.44973 12.9881 5.03696 13.8768 4.37784 14.5041C4.27448 14.6024 4.21332 14.6965 4.18784 14.7594C4.18311 14.771 4.18029 14.7797 4.17862 14.7856C4.52067 15.7459 5.03501 16.6253 5.68507 17.3866C5.69114 17.3881 5.7002 17.3901 5.713 17.3919C5.78016 17.4013 5.89193 17.3954 6.02853 17.3554C6.90026 17.0997 7.87449 17.1871 8.72485 17.678C9.57507 18.1689 10.1378 18.9688 10.3523 19.8514C10.386 19.9899 10.4369 20.0897 10.4787 20.1431C10.4864 20.1531 10.4925 20.1598 10.4969 20.1642C10.9836 20.2532 11.4858 20.2998 11.9998 20.2998C12.5139 20.2998 13.0162 20.2532 13.5031 20.1642C13.5074 20.1597 13.5135 20.153 13.5213 20.1431C13.563 20.0897 13.6139 19.99 13.6476 19.8515C13.8623 18.9692 14.425 18.1697 15.2749 17.679C16.125 17.1882 17.099 17.1007 17.9705 17.3562C18.1071 17.3962 18.2188 17.402 18.2859 17.3926C18.2987 17.3908 18.3078 17.3889 18.3138 17.3873C18.9646 16.6254 19.4794 15.7451 19.8216 14.7839C19.8199 14.7779 19.8171 14.7692 19.8123 14.7576C19.7868 14.6947 19.7256 14.6007 19.6222 14.5023C18.9627 13.875 18.5496 12.986 18.5496 12.0022C18.5496 11.0177 18.9632 10.1283 19.6234 9.50092C19.7269 9.40263 19.7881 9.30862 19.8136 9.24574C19.8184 9.23408 19.8212 9.22544 19.8229 9.21946C19.4818 8.2598 18.9687 7.38071 18.32 6.61951C18.3139 6.61792 18.3048 6.61599 18.2919 6.6142C18.2245 6.60479 18.1123 6.61078 17.9754 6.65113C17.1025 6.90841 16.1264 6.82157 15.2746 6.32978C14.4221 5.83756 13.8586 5.0347 13.6454 4.14925C13.6119 4.01024 13.561 3.90995 13.5191 3.85626C13.5113 3.84628 13.5053 3.83949 13.5009 3.83504C13.0147 3.74629 12.5131 3.6998 11.9998 3.6998C11.4865 3.6998 10.9848 3.74629 10.4986 3.83504ZM19.8251 9.2087L19.8249 9.21084L19.8251 9.2087ZM19.8238 14.7946L19.8236 14.7925L19.8238 14.7946ZM4.17636 14.7964L4.1766 14.7943L4.17636 14.7964ZM4.17366 9.21077L4.1739 9.21292L4.17366 9.21077Z\" fill=\"currentColor\" /></svg>"};
 const KEY='bomi.local.v1';
 const app=document.querySelector('#app'), dialog=document.querySelector('#dialog');
-// shortcut: 브라우저 로컬 저장. 계정 간 동기화를 도입할 때 인증된 서버 저장으로 교체한다.
+const initialConfig = await api('/api/config').catch(()=>null);
+const localMode = initialConfig?.mode === 'local';
+let cloud=null, cloudConfig=initialConfig, saving=false;
 let state=emptyState(), lastRaw=null, storageBlocked=false;
-try { lastRaw=localStorage.getItem(KEY); if(lastRaw) state=validateState(JSON.parse(lastRaw)); }
+try { if(localMode) { lastRaw=localStorage.getItem(KEY); if(lastRaw) state=validateState(JSON.parse(lastRaw)); } }
 catch { storageBlocked=true; }
 let demo=false, demoData=demoState(), page='today', selected=today(), month=today().slice(0,7), filter='', reviewDate=weekStart(today()), timer, codexTimer;
 const data=()=>demo?demoData:state;
@@ -15,18 +18,23 @@ const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;
 const theme=id=>ALL_THEMES.find(t=>t.id===id);
 const fmt=date=>new Intl.DateTimeFormat('ko-KR',{month:'long',day:'numeric',weekday:'long',timeZone:'UTC'}).format(new Date(`${date}T12:00:00Z`));
 function toast(message) { const el=document.querySelector('#toast'); el.textContent=message; el.classList.add('show'); clearTimeout(timer); timer=setTimeout(()=>el.classList.remove('show'),4500); }
-function update(change) {
-  const next=structuredClone(data()); change(next);
+async function update(change) {
+  if(saving){toast('저장 중이에요. 잠시 기다려주세요.');return false;}
+  saving=true;
   try {
+    const next=structuredClone(data()); change(next);
     const checked=validateState(next);
     if(demo) demoData=checked;
-    else {
+    else if(cloud) {
+      await cloud.save(checked,state); state=checked;
+    } else {
+      if(!localMode) throw new Error('서버 연결을 확인해주세요.');
       if(storageBlocked) throw new Error('기존 저장 데이터를 읽지 못했어요. 설정에서 원본을 먼저 백업해주세요.');
       if(localStorage.getItem(KEY)!==lastRaw) throw new Error('다른 창에서 기록이 바뀌었어요. 입력 내용을 복사한 뒤 새로고침해주세요.');
       const raw=JSON.stringify(checked); localStorage.setItem(KEY,raw); state=checked; lastRaw=raw;
     }
     return true;
-  } catch(error) { toast(error.message.startsWith('기존')||error.message.startsWith('다른')?error.message:'저장하지 못했어요. 입력을 보존하고 저장 공간·백업 파일을 확인해주세요.'); return false; }
+  } catch(error) { toast(cloud ? error.message : '저장하지 못했어요. 입력을 보존하고 저장 공간·다른 창의 변경을 확인해주세요.'); if(cloud) render(); return false; } finally { saving=false; }
 }
 function flower(active=Array(THEMES.length).fill(false),className='',label='') {
   const stage=flowerStage(active);
@@ -54,7 +62,7 @@ function daily() {
   const rest=data().rest.includes(selected), isToday=selected===today();
   const nudgeTheme=(total?THEMES.find((_,i)=>flags[i]):THEMES.find((_,i)=>!flags[i]))||THEMES[0];
   const future=data().futures[nudgeTheme.id];
-  return `<div class="page-heading"><div><h1 class="date-heading"><time datetime="${selected}">${selected.replaceAll('-','.')} ${new Intl.DateTimeFormat('ko-KR',{weekday:'long',timeZone:'UTC'}).format(new Date(`${selected}T12:00:00Z`))}</time></h1></div><div class="heading-actions"><button class="secondary" data-action="record">직접 기록하기</button><button class="primary" data-action="codex">${isToday?'오늘':'이날'} 한 일 가져오기</button></div></div><div class="dashboard"><div class="daily-column"><section class="bloom-card"><div class="bloom-head"><span class="pill">${isToday?'오늘의 꽃':'이날의 꽃'}</span><span class="quiet">${rest?'쉬어가는 날':total?`${total}단계 · ${total}개 테마 실천`:'0단계 · 아직 기록 없음'}</span></div><div class="hero-flower">${flower(flags,'',`${total}개 테마 실천`)}</div><h2>${total?'잘했어요! 해낸 일이 쌓이고 있어요.':rest?'오늘은 편하게 쉬어요.':'이미 한 일이 있나요?'}</h2><p>${total?'아래 도장에서 어떤 일을 했는지 확인해요.':rest?'나중에 기록하고 싶을 때 다시 와도 돼요.':'Codex에서 가져오거나 직접 기록해보세요.'}</p><div class="stamps">${THEMES.map((t,i)=>`<button class="stamp ${flags[i]?'done':''} ${filter===t.id?'active':''}" data-action="filter" data-theme="${t.id}" style="--accent:${t.color}" aria-pressed="${filter===t.id}" aria-label="${t.name} ${flags[i]?'완료':'기록 없음'}, 기록 보기"><span class="stamp-shape">${flags[i]?stampCheck:themeIcons[t.id]}</span><strong>${t.name}</strong><small>${flags[i]?'해냈어요':'아직 기록 없음'}</small></button>`).join('')}</div></section>
+  return `<div class="page-heading"><div><h1 class="date-heading"><time datetime="${selected}">${selected.replaceAll('-','.')} ${new Intl.DateTimeFormat('ko-KR',{weekday:'long',timeZone:'UTC'}).format(new Date(`${selected}T12:00:00Z`))}</time></h1></div><div class="heading-actions"><button class="secondary" data-action="record">직접 기록하기</button>${localMode?`<button class="primary" data-action="codex">${isToday?'오늘':'이날'} 한 일 가져오기</button>`:''}</div></div><div class="dashboard"><div class="daily-column"><section class="bloom-card"><div class="bloom-head"><span class="pill">${isToday?'오늘의 꽃':'이날의 꽃'}</span><span class="quiet">${rest?'쉬어가는 날':total?`${total}단계 · ${total}개 테마 실천`:'0단계 · 아직 기록 없음'}</span></div><div class="hero-flower">${flower(flags,'',`${total}개 테마 실천`)}</div><h2>${total?'잘했어요! 해낸 일이 쌓이고 있어요.':rest?'오늘은 편하게 쉬어요.':'이미 한 일이 있나요?'}</h2><p>${total?'아래 도장에서 어떤 일을 했는지 확인해요.':rest?'나중에 기록하고 싶을 때 다시 와도 돼요.':localMode?'Codex에서 가져오거나 직접 기록해보세요.':'오늘 해낸 일을 직접 기록해보세요.'}</p><div class="stamps">${THEMES.map((t,i)=>`<button class="stamp ${flags[i]?'done':''} ${filter===t.id?'active':''}" data-action="filter" data-theme="${t.id}" style="--accent:${t.color}" aria-pressed="${filter===t.id}" aria-label="${t.name} ${flags[i]?'완료':'기록 없음'}, 기록 보기"><span class="stamp-shape">${flags[i]?stampCheck:themeIcons[t.id]}</span><strong>${t.name}</strong><small>${flags[i]?'해냈어요':'아직 기록 없음'}</small></button>`).join('')}</div></section>
     ${isToday?`<section class="nudge"><span class="nudge-symbol">✦</span><div><span class="eyebrow">이것부터 해볼까요?</span><h3>${rest?'오늘은 편하게 쉬어가요.':total?'하나 해냈네요. 잘했어요!':nudgeTheme.prompt}</h3><p>${rest?'다시 시작하고 싶을 때 돌아오세요.':total?'더 하지 않아도 괜찮아요. 해낸 일을 확인해보세요.':future?esc(future):'이것 하나만 해봐요. 끝나면 한 줄로 기록해요.'}</p>${!rest&&!total&&!(data().snoozed[today()]>Date.now())?`<div class="inline-actions"><button data-action="start" data-theme="${nudgeTheme.id}">지금 시작 ↗</button><button data-action="snooze">나중에</button></div>`:''}</div></section>`:''}
     <section class="card records"><div class="section-top"><h2>${filter?theme(filter).name+'의 기록':'이날 해낸 일'} <span class="count">${records.length}</span></h2>${filter?'<button class="text-button" data-action="clear-filter">전체 보기</button>':''}<button class="text-button" data-action="rest">${rest?'쉬어감 취소':'오늘은 쉬어가기'}</button></div>${recordsList(records)}</section></div><aside>${calendar()}</aside></div>`;
 }
@@ -66,11 +74,12 @@ function reviewPage() {
   return `<div class="page-heading"><div><h1>이번 주에 한 일을 확인해볼까요?</h1><p>${fmt(reviewDate)} — ${fmt(shiftDate(reviewDate,6))}</p></div><div class="arrows"><button data-action="week" data-delta="-7" aria-label="이전 주">‹</button><button data-action="week" data-delta="7" aria-label="다음 주" ${reviewDate>=weekStart(today())?'disabled':''}>›</button></div></div><section class="card weekly"><div class="weekly-flowers">${Array.from({length:7},(_,i)=>{const date=shiftDate(reviewDate,i);return `<button data-action="date" data-date="${date}" ${date>today()?'disabled':''}><span>${['월','화','수','목','금','토','일'][i]}</span>${flower(activeThemes(data().records,date))}<small>${date.slice(5).replace('-','.')}</small></button>`;}).join('')}</div><h2>${summary.days?`이번 주 ${summary.days}일 실천했어요. 잘했어요!`:'아직 이 주에 남긴 기록이 없어요.'}</h2><p>빠뜨린 일이 있다면 날짜를 눌러 추가해요.</p><div class="week-stats">${summary.themes.map(t=>`<div><i style="background:${t.color}"></i><span>${t.name}</span><strong>${t.days}일</strong></div>`).join('')}</div></section><div class="review-grid"><section class="card"><h2>이번 주에 남긴 것</h2>${summary.entries.length?`<ul class="outcomes">${summary.entries.slice().reverse().map(r=>`<li><span>${r.date.slice(5).replace('-','.')}</span><div><strong>${esc(r.text)}</strong>${r.result?`<p>${esc(r.result)}</p>`:''}</div></li>`).join('')}</ul>`:'<p class="quiet">조사와 준비, 연습도 실제로 한 일이라면 남겨주세요.</p>'}</section><form id="review-form" class="card"><h2>이번 주의 양은 어땠어요?</h2><p class="quiet">다음 주를 재촉하지 않고, 내 페이스를 알아가요.</p><fieldset class="moods"><legend class="sr-only">체감 부담</legend>${['여유 있었어','적당했어','버거웠어'].map(m=>`<label><input type="radio" name="mood" value="${m}" ${review.mood===m?'checked':''}><span>${m}</span></label>`).join('')}</fieldset><label for="review-note">남기고 싶은 이야기</label><textarea id="review-note" name="note" maxlength="2000" placeholder="잘했던 일, 버거웠던 사정, 다음에 이어가고 싶은 것…">${esc(review.note)}</textarea><button class="primary">회고 저장하기</button><p class="footnote">실제 기록을 모은 회고예요. AI 분석은 아직 연결하지 않았어요.</p></form></div>`;
 }
 function settingsPage() {
+  if(cloud)return cloudSettings();
   return `<div class="page-heading"><div><h1>기록과 알림을 설정해요.</h1><p>기록과 알림을 직접 관리해요.</p></div></div><div class="settings-grid"><section class="card"><span class="pill">이 기기에서 사용 중</span><h2>나의 기록 보관</h2><button class="text-button" data-action="codex-settings">이 컴퓨터의 Codex 연결 설정</button><p>지금은 이 브라우저에 저장돼요. 브라우저 데이터를 지우기 전에 백업해주세요. 다른 기기와 자동으로 동기화되지는 않아요.</p><div class="inline-actions"><button class="secondary" data-action="export">기록 백업하기 ↓</button><label class="secondary file-label">백업 가져오기<input type="file" id="import-file" accept="application/json,.json"></label></div>${storageBlocked?'<p class="error">기존 저장 데이터를 읽지 못해 덮어쓰기를 막았어요. 먼저 원본을 백업해주세요.</p><button data-action="raw-export">원본 데이터 다운로드</button>':''}</section><section class="card"><h2>하루를 챙기는 알림</h2><p>로컬 버전에서는 보미가 열려 있는 동안에만 알림을 확인해요. 앱을 닫아도 오는 푸시는 아직 연결 전이에요.</p><form id="reminder-form"><label for="reminder-time">알림 받을 시각 · 한국시간</label><input type="time" id="reminder-time" name="time" value="${esc(data().reminder)}"><div class="inline-actions"><button class="primary">시각 저장</button><button type="button" data-action="reminder-off">끄기</button><button type="button" data-action="notification-test">알림 테스트</button></div></form><p class="footnote">쉬어가거나 이미 기록한 날에는 재촉하지 않아요.</p></section></div>`;
 }
 function render() {
   const views={today:daily,future:futurePage,review:reviewPage,saved:()=>`<div class="page-heading"><div><h1>다음에도 꺼내볼 기록.</h1><p>다시 활용하고 싶은 결과와 배운 점을 모아두세요.</p></div></div><section class="card">${recordsList(data().records.filter(r=>r.saved).slice().reverse())}</section>`,settings:settingsPage};
-  app.innerHTML=`<a class="skip" href="#main">본문으로 이동</a><aside class="sidebar"><a class="brand" href="#" data-action="nav" data-page="today"><img src="/assets/bomi-logo.png" alt="보미" width="1981" height="724"></a><nav aria-label="주 메뉴">${[['today','오늘의 보미'],['future','나의 미래'],['review','주간 회고'],['saved','보관함'],['settings','설정']].map(([id,name])=>`<button data-action="nav" data-page="${id}" class="${page===id?'current':''}" ${page===id?'aria-current="page"':''}><span aria-hidden="true">${navIcons[id]}</span>${name}</button>`).join('')}</nav><div class="sidebar-bottom"><div class="small-flower">${flower([false,true,false])}</div><p>한꺼번에 말고,<br>쉬운 것 하나부터.</p><button class="demo-button" data-action="demo">${demo?'내 기록으로 돌아가기':'예시로 둘러보기 ↗'}</button></div></aside><div class="workspace">${demo?'<div class="banner">예시 모드예요. 아래 기록은 실제 활동이 아니며 저장되지 않아요. <button data-action="demo">내 기록으로 돌아가기</button></div>':''}${storageBlocked?'<div class="banner error">저장 데이터를 읽지 못했어요. 설정에서 원본을 백업해주세요.</div>':''}<main id="main">${views[page]()}</main></div>`;
+  app.innerHTML=`<a class="skip" href="#main">본문으로 이동</a><aside class="sidebar"><a class="brand" href="#" data-action="nav" data-page="today"><img src="/assets/bomi-logo.png" alt="보미" width="1981" height="724"></a><nav aria-label="주 메뉴">${[['today','오늘의 보미'],['future','나의 미래'],['review','주간 회고'],['saved','보관함'],['settings','설정']].map(([id,name])=>`<button data-action="nav" data-page="${id}" class="${page===id?'current':''}" ${page===id?'aria-current="page"':''}><span aria-hidden="true">${navIcons[id]}</span>${name}</button>`).join('')}</nav><div class="sidebar-bottom"><div class="small-flower">${flower([false,true,false])}</div><p>한꺼번에 말고,<br>쉬운 것 하나부터.</p><button class="demo-button" data-action="demo">${demo?'내 기록으로 돌아가기':'예시로 둘러보기 ↗'}</button></div></aside><div class="workspace">${demo?'<div class="banner">예시 모드예요. 아래 기록은 실제 활동이 아니며 저장되지 않아요. <button data-action="demo">내 기록으로 돌아가기</button></div>':''}${cloud && !demo ? cloudBanner() : ''}${storageBlocked?'<div class="banner error">저장 데이터를 읽지 못했어요. 설정에서 원본을 백업해주세요.</div>':''}<main id="main">${views[page]()}</main></div>`;
 }
 function showDialog(html) { clearTimeout(codexTimer); delete dialog.dataset.codex; dialog.setAttribute('aria-label','보미 기록과 확인'); dialog.innerHTML=html; if(!dialog.open) dialog.showModal(); }
 const closeButton='<button type="button" class="close" data-action="close" aria-label="닫기">×</button>';
@@ -83,10 +92,10 @@ function recordForm(id='',preferred='') {
 function reviewRecord(record) {
   showDialog(`${closeButton}<h2>이렇게 남길까요?</h2><p class="quiet">${fmt(record.date)}</p><div class="preview-record"><div class="chips">${chips(record.themes)}</div><h3>${esc(record.text)}</h3>${record.result?`<p>${esc(record.result)}</p>`:''}</div><p>확인하면 도장과 오늘의 꽃 단계에 반영돼요.</p><div class="inline-actions"><button class="secondary" id="back-record">다시 다듬기</button><button class="primary" id="confirm-record">확인하고 기록 남기기</button></div>`);
   document.querySelector('#back-record').onclick=()=>{recordForm(data().records.some(r=>r.id===record.id)?record.id:'');const f=document.querySelector('#record-form');f.elements.date.value=record.date;f.elements.text.value=record.text;f.elements.result.value=record.result;f.querySelectorAll('[name="themes"]').forEach(el=>el.checked=record.themes.includes(el.value));};
-  document.querySelector('#confirm-record').onclick=()=>{
+  document.querySelector('#confirm-record').onclick=async()=>{
     const duplicate=data().records.some(r=>r.id!==record.id&&r.date===record.date&&r.text===record.text&&[...r.themes].sort().join() === [...record.themes].sort().join());
     if(duplicate){toast('같은 날짜에 같은 기록이 있어요. 기존 기록을 확인해주세요.');return;}
-    if(!update(s=>{const index=s.records.findIndex(r=>r.id===record.id); if(index<0)s.records.push(record);else s.records[index]=record;}))return;
+    if(!await update(s=>{const index=s.records.findIndex(r=>r.id===record.id); if(index<0)s.records.push(record);else s.records[index]=record;}))return;
     selected=record.date;month=selected.slice(0,7);filter='';page='today';render();
     const future=record.themes.map(id=>data().futures[id]).find(Boolean);
     showDialog(`${closeButton}<div class="celebration">${flower(activeThemes(data().records,selected),'pop')}<h2>잘했어요! 해낸 일을 기록했어요.</h2><p class="celebration-text">${esc(record.text)}</p>${record.result?`<p>${esc(record.result)}</p>`:''}<div class="chips">${chips(record.themes)}</div><p class="quiet">${future?`바라던 모습: “${esc(future)}”<br>선택한 테마에 실제 한 일을 남겼어요.`:'직접 해낸 일이에요. 나중에 다시 확인할 수 있어요.'}</p><button class="primary full" data-action="close">내 꽃 보러 가기</button></div>`);
@@ -94,17 +103,20 @@ function reviewRecord(record) {
 }
 function download(value,name) { const blob=new Blob([value],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000); }
 // shortcut: 열린 페이지에서만 알림을 검사한다. 닫힌 앱 알림은 서버 푸시 연결이 필요하다.
-function reminderCheck() {
+async function reminderCheck() {
+  if(!localMode)return;
   if(demo||storageBlocked||!state.reminder||state.rest.includes(today())||state.records.some(r=>r.date===today())||state.snoozed[today()]>Date.now())return;
   const time=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Seoul',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date());
   if(time<state.reminder)return;
-  if(!update(s=>s.snoozed[today()]=Date.now()+24*60*60*1000))return;
+  if(!await update(s=>s.snoozed[today()]=Date.now()+24*60*60*1000))return;
   if('Notification'in window&&Notification.permission==='granted') {const n=new Notification('보미 · 하나만 해볼까요?',{body:'오늘 해낸 일 하나만 같이 남겨볼까요?',icon:'/assets/flower-stage-3.png'});n.onclick=()=>{window.focus();selected=today();recordForm();n.close();};}
   toast('보미가 왔어요. 오늘 해낸 일 하나만 같이 남겨볼까요?');
 }
 async function action(event) {
   const button=event.target.closest('[data-action]');if(!button)return;
   event.preventDefault();const kind=button.dataset.action,id=button.dataset.id;
+  if(saving){toast('저장 중이에요. 잠시 기다려주세요.');return;}
+  if(kind.startsWith('cloud-')){await cloudAction(kind);return;}
   if(kind==='close'){dialog.close();return;}
   if(kind==='nav'){page=button.dataset.page;render();window.scrollTo({top:0});return;}
   if(kind==='demo'){demo=!demo;page='today';selected=today();month=selected.slice(0,7);filter='';render();return;}
@@ -117,32 +129,32 @@ async function action(event) {
   if(kind==='date'){selected=button.dataset.date;month=selected.slice(0,7);page='today';filter='';render();return;}
   if(kind==='month'){const d=new Date(`${month}-01T12:00:00Z`);d.setUTCMonth(d.getUTCMonth()+Number(button.dataset.delta));month=d.toISOString().slice(0,7);render();return;}
   if(kind==='week'){reviewDate=shiftDate(reviewDate,Number(button.dataset.delta));render();return;}
-  if(kind==='rest'){if(update(s=>{s.rest=s.rest.includes(selected)?s.rest.filter(d=>d!==selected):[...s.rest,selected];})){render();toast(data().rest.includes(selected)?'쉬어가는 날로 남겼어요. 기존 기록은 그대로예요.':'쉬어감 표시를 취소했어요.');}return;}
-  if(kind==='snooze'){if(update(s=>s.snoozed[today()]=Date.now()+60*60*1000)){render();toast('한 시간 동안 쉬어갈게요.');}return;}
+  if(kind==='rest'){if(await update(s=>{s.rest=s.rest.includes(selected)?s.rest.filter(d=>d!==selected):[...s.rest,selected];})){render();toast(data().rest.includes(selected)?'쉬어가는 날로 남겼어요. 기존 기록은 그대로예요.':'쉬어감 표시를 취소했어요.');}return;}
+  if(kind==='snooze'){if(await update(s=>s.snoozed[today()]=Date.now()+60*60*1000)){render();toast('한 시간 동안 쉬어갈게요.');}return;}
   if(kind==='start'){showDialog(`${closeButton}<span class="eyebrow">한 가지면 충분해요</span><h2>${theme(button.dataset.theme).prompt}</h2><p>실제로 마친 뒤 한 줄로 남겨주세요. 시작 버튼만 눌러서는 꽃 단계가 오르지 않아요.</p><button class="primary" id="start-record">했어요, 기록할게요</button>`);document.querySelector('#start-record').onclick=()=>recordForm('',button.dataset.theme);return;}
-  if(kind==='save-tip'){if(update(s=>{const r=s.records.find(r=>r.id===id);r.saved=!r.saved;})){render();toast('보관함을 업데이트했어요.');}return;}
+  if(kind==='save-tip'){if(await update(s=>{const r=s.records.find(r=>r.id===id);r.saved=!r.saved;})){render();toast('보관함을 업데이트했어요.');}return;}
   if(kind==='delete'){
     showDialog(`${closeButton}<h2>이 기록을 삭제할까요?</h2><p>해당 테마의 마지막 기록이면 도장과 꽃 단계도 함께 바뀌어요.</p><div class="inline-actions"><button data-action="close" class="secondary">취소</button><button id="confirm-delete" class="danger">기록 삭제</button></div>`);
-    document.querySelector('#confirm-delete').onclick=()=>{if(update(s=>s.records=s.records.filter(r=>r.id!==id))){dialog.close();render();toast('기록을 삭제했어요.');}};return;
+    document.querySelector('#confirm-delete').onclick=async()=>{if(await update(s=>s.records=s.records.filter(r=>r.id!==id))){dialog.close();render();toast('기록을 삭제했어요.');}};return;
   }
   if(kind==='export'){download(JSON.stringify(data(),null,2),`bomi-${demo?'example-':''}${today()}.json`);return;}
   if(kind==='raw-export'){download(lastRaw||'null',`bomi-original-${today()}.json`);return;}
-  if(kind==='reminder-off'){if(update(s=>s.reminder='')){render();toast('알림을 껐어요.');}return;}
+  if(kind==='reminder-off'){if(await update(s=>s.reminder='')){render();toast('알림을 껐어요.');}return;}
   if(kind==='notification-test'){
     if(!('Notification'in window)){toast('이 브라우저는 시스템 알림을 지원하지 않아요.');return;}
     try {const permission=await Notification.requestPermission();if(permission==='granted')new Notification('보미의 테스트 알림',{body:'오늘 한 일 하나만 기록해볼까요?',icon:'/assets/flower-stage-3.png'});else toast('알림 권한이 허용되지 않았어요.');}catch{toast('이 환경에서는 시스템 알림을 사용할 수 없어요.');}return;
   }
 }
 document.addEventListener('click',action);
-document.addEventListener('submit',event=>{
+document.addEventListener('submit',async event=>{
   const form=event.target;event.preventDefault();const fd=new FormData(form);
   if(form.id==='record-form') {
     try { const old=data().records.find(r=>r.id===form.dataset.id);const record=validateRecord({id:old?.id||crypto.randomUUID(),date:fd.get('date'),text:fd.get('text'),result:fd.get('result'),themes:fd.getAll('themes'),saved:old?.saved||false},today(),!!old);reviewRecord(record); }
     catch(error){form.querySelector('.form-error').textContent=error.message;}return;
   }
-  if(form.id==='future-form'){if(update(s=>{for(const t of THEMES)s.futures[t.id]=fd.get(t.id).trim();s.onboarded=true;})){toast('바라는 미래를 저장했어요.');}return;}
-  if(form.id==='review-form'){if(update(s=>s.reviews[reviewDate]={mood:fd.get('mood')||'',note:fd.get('note').trim()}))toast('이번 주의 이야기를 저장했어요.');return;}
-  if(form.id==='reminder-form'){if(update(s=>{s.reminder=fd.get('time');delete s.snoozed[today()];}))toast(fd.get('time')?'보미가 열려 있을 때 이 시각부터 알림을 확인할게요.':'알림을 껐어요.');return;}
+  if(form.id==='future-form'){if(await update(s=>{for(const t of THEMES)s.futures[t.id]=fd.get(t.id).trim();s.onboarded=true;})){toast('바라는 미래를 저장했어요.');}return;}
+  if(form.id==='review-form'){if(await update(s=>s.reviews[reviewDate]={mood:fd.get('mood')||'',note:fd.get('note').trim()}))toast('이번 주의 이야기를 저장했어요.');return;}
+  if(form.id==='reminder-form'){if(await update(s=>{s.reminder=fd.get('time');delete s.snoozed[today()];}))toast(fd.get('time')?(cloud?'시각을 저장했어요. 이 기기의 알림 받기도 켜주세요.':'보미가 열려 있을 때 이 시각부터 알림을 확인할게요.'):'알림을 껐어요.');return;}
 });
 document.addEventListener('change',async event=>{
   if(event.target.id!=='import-file')return;
@@ -151,17 +163,16 @@ document.addEventListener('change',async event=>{
     if(file.size>10*1024*1024)throw new Error('10MB 이하의 백업 파일을 선택해주세요.');
     const incoming=validateState(JSON.parse(await file.text()));
     showDialog(`${closeButton}<h2>백업 ${incoming.records.length}건을 가져올까요?</h2><p>현재 기록을 자동으로 백업한 다음, 선택한 파일의 내용으로 바꿔요.</p><div class="inline-actions"><button data-action="close" class="secondary">취소</button><button id="confirm-import" class="primary">백업하고 가져오기</button></div>`);
-    document.querySelector('#confirm-import').onclick=()=>{
+    document.querySelector('#confirm-import').onclick=async()=>{
       download(storageBlocked?lastRaw:JSON.stringify(data(),null,2),`bomi-before-import-${today()}.json`);
       if(storageBlocked){toast('읽지 못한 원본은 보존했어요. 복구를 확인하기 전에는 교체하지 않아요.');return;}
-      if(update(s=>Object.assign(s,incoming))){dialog.close();render();toast('백업을 가져왔어요.');}
+      if(await update(s=>Object.assign(s,incoming))){dialog.close();render();toast('백업을 가져왔어요.');}
     };
   } catch(error) {toast(error instanceof SyntaxError?'JSON 백업 파일을 확인해주세요.':error.message);}
   event.target.value='';
 });
 window.addEventListener('storage',event=>{if(event.key===KEY){toast('다른 창의 변경이 있어요. 입력 중인 내용이 없다면 새로고침해주세요.');}});
-render();
-setInterval(reminderCheck,30000);
+if(localMode){render();setInterval(reminderCheck,30000);}else{bootCloud();}
 
 
 async function codexApi(action,value) {
@@ -210,11 +221,52 @@ function reviewCodex(job) {
     try {
       const records=fd.getAll('include').map(value=>{const i=Number(value),draft=job.records[i];return validateRecord({...draft,text:fd.get(`text-${i}`),result:fd.get(`result-${i}`),themes:fd.getAll(`themes-${i}`),saved:data().records.find(r=>r.id===draft.id)?.saved||false});});
       if(!records.length)throw new Error('실제로 한 일을 한 개 이상 선택해주세요.');
-      if(!update(s=>{for(const record of records){const index=s.records.findIndex(r=>r.id===record.id);if(index<0)s.records.push(record);else s.records[index]=record;}}))return;
+      if(!await update(s=>{for(const record of records){const index=s.records.findIndex(r=>r.id===record.id);if(index<0)s.records.push(record);else s.records[index]=record;}}))return;
       // Local records are committed first; a failed acknowledgement remains safely repeatable by stable IDs.
       let acknowledged=true;try{await codexApi('close',{id:job.id});}catch{acknowledged=false;}
       selected=job.date;month=selected.slice(0,7);page='today';filter='';render();
       showDialog(`${closeButton}<div class="celebration">${flower(activeThemes(data().records,selected),'pop')}<h2>해낸 일 ${records.length}개를 기록했어요.</h2><p>확인한 테마를 도장과 꽃에 반영했어요.</p>${acknowledged?'':'<p class="footnote">기록은 저장했지만 요청 종료 확인이 지연됐어요. 다시 확인해도 같은 기록은 중복되지 않아요.</p>'}<button class="primary full" data-action="close">내 기록 보기</button></div>`);
     } catch(error){f.querySelector('.form-error').textContent=error.message;}
   };
+}
+
+
+function cloudSettings() {
+  return `<div class="page-heading"><h1>기록과 알림을 설정해요.</h1></div><div class="settings-grid"><section class="card"><span class="pill">내 계정에 저장</span><h2>나의 기록 보관</h2><p>같은 계정으로 로그인한 기기에서 기록을 함께 볼 수 있어요. 이 기기에는 저장 전 백업과 전송하지 못한 입력이 남아요.</p><div class="inline-actions"><button class="secondary" data-action="export">기록 백업하기 ↓</button><button class="secondary" data-action="cloud-refresh">최신 기록 불러오기</button><label class="secondary file-label">백업 가져오기<input type="file" id="import-file" accept="application/json,.json"></label><a class="secondary" href="/cdn-cgi/access/logout">로그아웃</a></div><p class="footnote">로컬 보미에서 백업한 파일을 가져올 수 있어요. 가져오기는 현재 기록을 교체하므로 먼저 양쪽을 백업해주세요.</p></section><section class="card"><h2>하루를 챙기는 알림</h2><p>알림을 받을 기기마다 아래 버튼으로 허용해주세요. 아이폰은 먼저 홈 화면에 보미를 추가해주세요.</p><form id="reminder-form"><label for="reminder-time">알림 받을 시각 · 한국시간</label><input type="time" id="reminder-time" name="time" value="${esc(data().reminder)}"><div class="inline-actions"><button class="primary">시각 저장</button><button type="button" data-action="reminder-off">모든 기기 알림 끄기</button></div></form><div class="inline-actions"><button class="secondary" data-action="cloud-push">이 기기에서 알림 받기</button><button class="text-button" data-action="cloud-unsubscribe">이 기기 알림 해제</button></div><p class="footnote">설정 시각부터 약 5분 간격으로 확인해 하루 한 번 보내요. 이미 기록했거나 쉬어가는 날에는 보내지 않아요. 네트워크·집중 모드에 따라 늦게 도착할 수 있어요.</p></section></div>`;
+}
+function cloudBanner() {
+  return cloud.pending().length ? '<div class="banner error" role="status">서버 저장이 끝나지 않은 입력이 이 기기에 남아 있어요. <button data-action="cloud-retry">저장 다시 시도</button><button data-action="cloud-recover">입력 백업 후 최신 기록 불러오기</button></div>' : '';
+}
+async function bootCloud() {
+  app.innerHTML='<main class="card"><h1>내 기록을 불러오고 있어요.</h1></main>';
+  try {
+    cloudConfig=initialConfig || await api('/api/config');
+    if(cloudConfig.mode!=='cloud')throw new Error('서버 연결을 확인해주세요.');
+    cloud=new CloudStore(cloudConfig.owner);
+    state=await cloud.load(); render();
+  } catch {
+    app.innerHTML='<main class="card"><h1>로그인과 연결을 확인해주세요.</h1><p>본인 계정으로 로그인한 뒤 기록을 불러올 수 있어요.</p><a class="primary" href="/">다시 연결하기</a></main>';
+  }
+}
+async function cloudAction(kind) {
+  if(!cloud)return;
+  if(demo){toast('예시 모드에서는 계정 설정을 바꾸지 않아요.');return;}
+  try {
+    if(kind==='cloud-push'){await enablePush(cloudConfig.pushPublicKey);toast('이 기기의 알림을 등록했어요. 알림 시각도 저장해주세요.');return;}
+    if(kind==='cloud-unsubscribe'){await disablePush();toast('이 기기의 알림을 해제했어요.');return;}
+    if(kind==='cloud-retry'){state=await cloud.retry();render();toast('저장을 확인했어요.');return;}
+    if(kind==='cloud-recover'){
+      const items=cloud.pending();
+      if(items.length===1)download(JSON.stringify(items[0].input.state,null,2),`bomi-unsent-${today()}.json`);
+      else download(JSON.stringify(items.map(item=>item.input),null,2),`bomi-unsent-bundle-${today()}.json`);
+      const latest=await cloud.load();
+      // Only the pending writes included in this user-requested backup are cleared.
+      for(const item of items)cloud.storage.removeItem(item.key);
+      state=latest;render();toast('입력을 백업하고 최신 기록을 불러왔어요. 필요한 내용을 다시 반영해주세요.');return;
+    }
+    if(kind==='cloud-refresh'){
+      if(cloud.pending().length)throw new Error('보존된 입력을 먼저 백업하거나 다시 저장해주세요.');
+      state=await cloud.load();render();toast('최신 기록을 불러왔어요.');
+    }
+  }catch(error){toast(error.message);}
 }

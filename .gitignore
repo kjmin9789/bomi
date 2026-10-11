@@ -28,3 +28,16 @@
 !/tests/codex-bridge.test.mjs
 
 !/THIRD_PARTY_NOTICES.md
+
+!/package-lock.json
+!/wrangler.jsonc
+!/cloud/
+/cloud/*
+!/cloud/worker.js
+!/cloud/schema.sql
+!/cloud/README.md
+!/app/cloud.js
+!/app/sw.js
+!/tests/cloud.test.mjs
+!/tests/cloud-client.test.mjs
+!/cloud/setup-keys.mjs

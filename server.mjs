@@ -5,7 +5,7 @@ import {createBridge} from './codex-bridge.mjs';
 const allowed = new Map([
   ['/', ['index.html', 'text/html']], ['/index.html', ['index.html', 'text/html']],
   ['/style.css', ['style.css', 'text/css']], ['/app.js', ['app.js', 'text/javascript']],
-  ['/model.js', ['model.js', 'text/javascript']], ['/icon.svg', ['icon.svg', 'image/svg+xml']],
+  ['/model.js', ['model.js', 'text/javascript']], ['/cloud.js', ['cloud.js', 'text/javascript']], ['/icon.svg', ['icon.svg', 'image/svg+xml']],
   ['/assets/OwnglyphCorncorn.ttf', ['assets/OwnglyphCorncorn.ttf', 'font/ttf']],
   ['/assets/bomi-logo.png', ['assets/bomi-logo.png', 'image/png']],
   ['/manifest.webmanifest', ['manifest.webmanifest', 'application/manifest+json']]
@@ -16,6 +16,7 @@ export function createAppServer(bridge=createBridge()) { return createServer(asy
   const json=(status,value)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(value));};
   if(req.headers.host!==host)return json(403,{error:'로컬 보미 주소에서만 사용할 수 있어요.'});
   let path;try{path=new URL(req.url,'http://localhost').pathname;}catch{return json(400,{error:'주소를 확인해주세요.'});}
+  if(path==='/api/config'&&req.method==='GET')return json(200,{mode:'local'});
   if(path.startsWith('/api/codex/')) {
     if(req.headers['sec-fetch-site']==='cross-site'||(req.headers.origin&&req.headers.origin!==`http://${host}`))return json(403,{error:'보미 화면에서 요청해주세요.'});
     try {
