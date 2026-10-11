@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {activeThemes,flowerStage,validateRecord,validateState,emptyState,weekStart,shiftDate,weekSummary,validDate} from '../app/model.js';
+import {groupRecords,activeThemes,flowerStage,validateRecord,validateState,emptyState,weekStart,shiftDate,weekSummary,validDate} from '../app/model.js';
 const record=(id,date='2026-10-10',themes=['career'])=>({id,date,text:'원고 준비',result:'임시저장 원고',themes,saved:false});
 test('테마 중복 기록은 실천 테마 수를 바꾸지 않는다',()=>{
   const once=activeThemes([record('1')],'2026-10-10');
@@ -62,4 +62,16 @@ test('하루 꽃은 기록 건수가 아닌 실천한 테마 수로 0~3단계',(
   assert.equal(flowerStage(activeThemes(records,'2026-10-10')),3);
   assert.equal(flowerStage(activeThemes(records.slice(0,-1),'2026-10-10')),2);
   assert.equal(flowerStage(activeThemes(records,'2026-10-09')),0);
+});
+
+
+test('내용 묶음은 순서와 원본을 보존하고 백업에서도 유지된다',()=>{
+ const a={...record('a'),group:' 글 작성 '},b={...record('b'),group:'생활 도구 만들기'},c={...record('c'),group:'글 작성'},old=record('old');
+ assert.deepEqual(groupRecords([a,b,c,old]),[['글 작성',[a,c]],['생활 도구 만들기',[b]],['',[old]]]);
+ const data=emptyState();data.records=[a,b,c,old];
+ const restored=validateState(JSON.parse(JSON.stringify(data)));
+ assert.equal(restored.records[0].group,'글 작성');
+ assert.deepEqual(restored.records[3],old);
+ assert.deepEqual(activeThemes(restored.records,a.date),activeThemes(data.records,a.date));
+ for(const group of [null,{},'x'.repeat(81),'두\n줄'])assert.throws(()=>validateRecord({...a,group}));
 });
