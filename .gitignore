@@ -21,3 +21,5 @@
 !/tests/
 /tests/*
 !/tests/model.test.mjs
+!/app/assets/GmarketSansTTFBold.ttf
+!/app/assets/GmarketSans-LICENSE.txt

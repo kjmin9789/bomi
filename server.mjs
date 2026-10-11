@@ -4,6 +4,7 @@ const allowed = new Map([
   ['/', ['index.html', 'text/html']], ['/index.html', ['index.html', 'text/html']],
   ['/style.css', ['style.css', 'text/css']], ['/app.js', ['app.js', 'text/javascript']],
   ['/model.js', ['model.js', 'text/javascript']], ['/icon.svg', ['icon.svg', 'image/svg+xml']],
+  ['/assets/GmarketSansTTFBold.ttf', ['assets/GmarketSansTTFBold.ttf', 'font/ttf']],
   ['/manifest.webmanifest', ['manifest.webmanifest', 'application/manifest+json']]
 ]);
 for (let stage=0;stage<=3;stage++) allowed.set(`/assets/flower-stage-${stage}.png`,[`assets/flower-stage-${stage}.png`,'image/png']);
