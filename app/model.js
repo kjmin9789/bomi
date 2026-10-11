@@ -23,6 +23,14 @@ export function activeThemes(records, date) {
   const ids = new Set(records.filter(r=>r.date===date).flatMap(r=>r.themes));
   return THEMES.map(t=>ids.has(t.id));
 }
+export function themesByDate(records) {
+  const dates=new Map();
+  for(const record of records) {
+    if(!dates.has(record.date))dates.set(record.date,new Set());
+    for(const id of record.themes)dates.get(record.date).add(id);
+  }
+  return new Map([...dates].map(([date,ids])=>[date,THEMES.map(t=>ids.has(t.id))]));
+}
 export function flowerStage(active) {
   return Math.min(3, active.filter(Boolean).length);
 }
@@ -97,7 +105,7 @@ export function validateRoutine(r) {
   const themes=r.themes??[];
   if(!Array.isArray(themes)||themes.length>3||new Set(themes).size!==themes.length||themes.some(id=>!THEMES.some(t=>t.id===id)))throw new Error('루틴 테마를 확인해주세요.');
   if(r.memo!==undefined&&(typeof r.memo!=='string'||r.memo.length>500))throw new Error('메모는 500자까지 적을 수 있어요.');
-  return {...(r.memo?.trim()?{memo:r.memo.trim()}:{}),themes:[...themes],id:r.id,title:r.title.trim(),kind:r.kind,time:r.time,days:[...r.days],enabled:r.enabled,before:r.kind==='bedtime'?r.before:''};
+  return {...(r.memo?.trim()?{memo:r.memo.trim()}:{}),themes:[...themes],id:r.id,title:r.title.trim(),kind:r.kind,time:r.time,days:[...r.days],enabled:r.enabled,...(r.kind==='bedtime'?{before:r.before}:{})};
 }
 export function routineOccurrence(r,date) { return `${date}:${r.id}`; }
 export function routineDue(state, now=new Date()) {
@@ -105,12 +113,13 @@ export function routineDue(state, now=new Date()) {
   const time=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Seoul',hour:'2-digit',minute:'2-digit',hour12:false}).format(now);
   const weekday=new Date(`${date}T12:00:00Z`).getUTCDay();
   if(state.rest.includes(date))return [];
-  return state.routines.filter(r=>r.enabled&&r.days.includes(weekday)&&r.time<=time&&!state.checkins.some(a=>a.key===routineOccurrence(r,date))).map(r=>({...r,date,key:routineOccurrence(r,date)}));
+  const answered=new Set(state.checkins.map(a=>a.key));
+  return state.routines.filter(r=>r.enabled&&r.days.includes(weekday)&&r.time<=time&&!answered.has(routineOccurrence(r,date))).map(r=>({...r,date,key:routineOccurrence(r,date)}));
 }
 export function validateCheckin(a, now=new Date()) {
   const date=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul'}).format(now);
   if(!a || typeof a.routineId!=='string' || !/^[a-zA-Z0-9-]{1,80}$/.test(a.routineId) || !validDate(a.date) || a.date>date || a.key!==`${a.date}:${a.routineId}` || typeof a.title!=='string' || !a.title.trim() || a.title.length>100 || !['done','skip','bedtime'].includes(a.answer)) throw new Error('답변 내용을 확인해주세요.');
-  const next={key:a.key,routineId:a.routineId,date:a.date,title:a.title,answer:a.answer,bedtime:'',before:validTime(a.before)?a.before:''};
+  const next={key:a.key,routineId:a.routineId,date:a.date,title:a.title,answer:a.answer,...(validTime(a.before)?{before:a.before}:{})};
   if(a.answer==='bedtime') {
     if(typeof a.bedtime!=='string'|| !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(a.bedtime)||!validDate(a.bedtime.slice(0,10))||!validTime(a.bedtime.slice(11))||!validTime(a.before))throw new Error('누운 날짜와 시각을 확인해주세요.');
     if(a.bedtime<`${shiftDate(a.date,-1)}T00:00`||a.bedtime>=`${shiftDate(a.date,1)}T00:00`||+new Date(`${a.bedtime}:00+09:00`)>+now)throw new Error('지난밤 실제로 누운 날짜와 시각을 골라주세요.');
