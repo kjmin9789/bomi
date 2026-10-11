@@ -4,7 +4,11 @@
 
 Source: https://github.com/wanteddev/montage-web/blob/main/packages/icon/src/icon-check-thick.tsx
 
-The completed theme stamp uses the original SVG path.
+The completed theme stamp uses the original SVG path. Theme icons also use the original IconCoins, IconBusinessBag, and IconHeart SVG paths from the same MIT-licensed project.
+
+- https://github.com/wanteddev/montage-web/blob/main/packages/icon/src/icon-coins.tsx
+- https://github.com/wanteddev/montage-web/blob/main/packages/icon/src/icon-business-bag.tsx
+- https://github.com/wanteddev/montage-web/blob/main/packages/icon/src/icon-heart.tsx
 
 MIT License
 
