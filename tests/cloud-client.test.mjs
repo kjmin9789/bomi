@@ -38,3 +38,35 @@ test('Codex 요청은 현재 컴퓨터로만 보내고 클라우드 인증정보
  assert.equal(requests[1].options.headers['X-Bomi-Request'],'1');
  assert.equal(requests[2].url,'/api/codex/status');
 });
+
+test('기기별 추가 기록을 합치고 다른 필드 수정·삭제도 보존한다',async()=>{
+ const {mergeStates}=await import('../app/cloud.js');
+ const record=(id,text)=>({id,date:'2026-10-11',text,themes:['career'],result:'',saved:false});
+ const base={...emptyState(),records:[record('a','원문'),record('gone','삭제') ]};
+ const local=structuredClone(base),remote=structuredClone(base);
+ local.records[0].text='수정';local.records.splice(1,1);local.records.push(record('local','이 기기'));
+ remote.records[0].saved=true;remote.records.push(record('remote','다른 기기'));
+ const merged=mergeStates(base,local,remote);
+ assert.deepEqual(merged.records.map(r=>r.id),['a','local','remote']);
+ assert.equal(merged.records[0].text,'수정');assert.equal(merged.records[0].saved,true);
+ remote.records[0].text='충돌';assert.throws(()=>mergeStates(base,local,remote),/다른 기기/);
+ remote.records=base.records.map(r=>({...r}));remote.records[1].text='삭제 중 수정';
+ assert.throws(()=>mergeStates(base,local,remote),/다른 기기/);
+});
+
+test('동시 저장 충돌은 합친 입력을 먼저 로컬에 보존하고 응답 유실 시 그대로 재시도한다',async()=>{
+ const record=id=>({id,date:'2026-10-11',text:id,themes:['career'],result:'',saved:false});
+ const base=emptyState(),local={...base,records:[record('local')]},remote={...base,records:[record('remote')]};
+ const disk=storage();let puts=0,last;
+ const store=new CloudStore('merge',disk,async(path,method,input)=>{
+   if(!method)return {revision:1,state:remote};
+   puts++;
+   if(puts===1)throw Object.assign(new Error('conflict'),{status:409});
+   assert.deepEqual(input.state.records.map(r=>r.id),['local','remote']);
+   assert.deepEqual(store.pending()[0].input,input);
+   if(puts===2){last=input.mutation;throw new Error('response lost');}
+   assert.equal(input.mutation,last);return {revision:2};
+ });
+ await assert.rejects(store.save(local,base),/response lost/);
+ const result=await store.retry();assert.equal(result.records.length,2);assert.equal(store.pending().length,0);
+});

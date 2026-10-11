@@ -26,7 +26,7 @@ async function update(change) {
     const checked=validateState(next);
     if(demo) demoData=checked;
     else if(cloud) {
-      await cloud.save(checked,state); state=checked;
+      state=await cloud.save(checked,state);
     } else {
       if(!localMode) throw new Error('서버 연결을 확인해주세요.');
       if(storageBlocked) throw new Error('기존 저장 데이터를 읽지 못했어요. 설정에서 원본을 먼저 백업해주세요.');
@@ -62,7 +62,7 @@ function groupTags(items) {
 }
 function recordsList(records) {
   if(!records.length) return `<div class="empty"><span>아직 기록이 없어요.</span><p>이미 한 일이 있다면 한 줄만 적어보세요.</p></div>`;
-  return sortedWorkGroups(records).map(([name,items])=>`<section class="work-group"><button class="work-group-open" data-action="group" data-id="${esc(items[0].id)}" aria-label="${esc(name||'해낸 일')} ${items.length}개 · 묶음 내역 보기"><span class="work-group-heading"><strong class="work-group-title">${esc(name||'해낸 일')} <span class="count">${items.length}</span></strong>${groupTags(items)}</span><span class="record group-preview"><span class="record-body"><strong class="record-title">${esc(items[0].summary||items[0].text)}</strong></span><span class="quiet" aria-hidden="true">›</span></span></button></section>`).join('');
+  return sortedWorkGroups(records).map(([name,items])=>`<section class="work-group"><button class="work-group-open" data-action="group" data-id="${esc(items[0].id)}" aria-label="${esc(name||'해낸 일')} ${items.length}개 · 묶음 내역 보기"><span class="work-group-heading">${groupTags(items)}<strong class="work-group-title">${esc(name||'해낸 일')}</strong><span class="count">${items.length}</span><svg class="group-chevron" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M7.86337 3.36272C7.51189 3.7142 7.51189 4.28405 7.86337 4.63552L15.227 11.9991L7.86337 19.3627C7.51189 19.7142 7.51189 20.284 7.86337 20.6355C8.21484 20.987 8.78469 20.987 9.13616 20.6355L17.1362 12.6355C17.4876 12.284 17.4876 11.7142 17.1362 11.3627L9.13616 3.36272C8.78469 3.01125 8.21484 3.01125 7.86337 3.36272Z" fill="currentColor"/></svg></span></button></section>`).join('');
 }
 function groupItems(id) {
   const record=data().records.find(r=>r.id===id);if(!record)return [];
@@ -74,7 +74,7 @@ function groupDetail(id) {
   const items=groupItems(id);if(!items.length)return;
   const record=items[0],ids=new Set(items.map(r=>r.id));
   const themeIds=[...new Set(items.flatMap(r=>r.themes))],initialTheme=themeIds.length===1&&THEMES.some(t=>t.id===themeIds[0])?themeIds[0]:'';
-  showDialog(`${closeButton}<div class="group-title-line"><h2 id="group-title-heading"><span id="group-title-label">${esc(record.group||'해낸 일')}</span> <span class="count">${items.length}</span></h2><button id="group-title-edit" aria-label="묶음 제목 수정">${pencilIcon}</button><div id="group-title-editor" hidden><input id="group-title-input" aria-label="묶음 제목" maxlength="80" value="${esc(record.group||'')}" hidden><button id="group-title-save" type="button">저장</button></div></div><fieldset id="group-theme" class="theme-picker"><legend class="sr-only">묶음 테마</legend>${THEMES.map(t=>`<label style="--accent:${t.color}"><input type="radio" name="group-theme" value="${t.id}" ${initialTheme===t.id?'checked':''}><span>${themeIcons[t.id]}${t.name}</span></label>`).join('')}</fieldset><div class="group-history">${items.map(r=>recordRow(r)).join('')}</div>`);
+  showDialog(`${closeButton}<div class="group-title-line"><h2 id="group-title-heading"><span id="group-title-label">${esc(record.group||'해낸 일')}</span> <span class="count">${items.length}</span></h2><button id="group-title-edit" aria-label="묶음 제목 수정">${pencilIcon}</button><div id="group-title-editor" hidden><input id="group-title-input" aria-label="묶음 제목" maxlength="80" value="${esc(record.group||'')}" hidden><button id="group-title-save" class="primary" type="button">저장</button></div></div><fieldset id="group-theme" class="theme-picker"><legend class="sr-only">묶음 테마</legend>${THEMES.map(t=>`<label style="--accent:${t.color}"><input type="radio" name="group-theme" value="${t.id}" ${initialTheme===t.id?'checked':''}><span>${themeIcons[t.id]}${t.name}</span></label>`).join('')}</fieldset><div class="group-history">${items.map(r=>recordRow(r)).join('')}</div>`);
   const input=dialog.querySelector('#group-title-input'),label=dialog.querySelector('#group-title-label'),select=dialog.querySelector('#group-theme');
   const heading=dialog.querySelector('#group-title-heading'),editor=dialog.querySelector('#group-title-editor'),edit=dialog.querySelector('#group-title-edit'),save=dialog.querySelector('#group-title-save');
   let storedName=record.group||'',storedTheme=initialTheme,pending=Promise.resolve(true);
@@ -151,7 +151,14 @@ function recordForm(id='',preferred='') {
   const record=id?data().records.find(r=>r.id===id):null;
   if(id&&!record)return;
   const choices=[...THEMES,...ALL_THEMES.filter(t=>record?.themes.includes(t.id)&&!THEMES.some(active=>active.id===t.id))];
-  showDialog(`${closeButton}<h2>${record?'기록 다듬기':'한 일을 한 줄로 적어볼까요?'}</h2><form id="record-form" data-id="${esc(id)}">${record?'':`<fieldset class="theme-picker"><legend>관련된 테마를 직접 골라주세요</legend>${choices.map(t=>`<label style="--accent:${t.color}"><input type="checkbox" name="themes" value="${t.id}" ${(record?.themes||[preferred]).includes(t.id)?'checked':''}><span>${themeIcons[t.id]||esc(t.mark)}${t.name}</span></label>`).join('')}</fieldset>`}<label for="record-summary">목록에 보일 한 줄 <span class="quiet">선택</span></label><input id="record-summary" name="summary" maxlength="80" placeholder="예: 블로그 글을 임시저장했다" value="${esc(record?.summary||'')}"><label for="record-text">실제로 한 일 · 상세</label><textarea id="record-text" name="text" maxlength="1000" required placeholder="예: 준비하던 글의 제목을 다듬었어">${esc(record?.text||'')}</textarea>${record?'':`<label for="record-group">작업 묶음 <span class="quiet">선택</span></label><input id="record-group" name="group" maxlength="80">`}<div class="form-error" role="alert"></div><button class="primary full">저장</button></form>`);
+  showDialog(`${closeButton}<h2>${record?'기록 다듬기':'한 일을 한 줄로 적어볼까요?'}</h2><form id="record-form" data-id="${esc(id)}">${record?'':`<fieldset class="theme-picker"><legend>관련된 테마를 직접 골라주세요</legend>${choices.map(t=>`<label style="--accent:${t.color}"><input type="checkbox" name="themes" value="${t.id}" ${(record?.themes||[preferred]).includes(t.id)?'checked':''}><span>${themeIcons[t.id]||esc(t.mark)}${t.name}</span></label>`).join('')}</fieldset>`}<label for="record-summary">목록에 보일 한 줄 <span class="quiet">선택</span></label><input id="record-summary" name="summary" maxlength="80" placeholder="예: 블로그 글을 임시저장했다" value="${esc(record?.summary||'')}"><label for="record-text">실제로 한 일 · 상세</label><textarea id="record-text" name="text" maxlength="1000" required placeholder="예: 준비하던 글의 제목을 다듬었어">${esc(record?.text||'')}</textarea>${record?'':`<label for="record-group">작업 묶음 <span class="quiet">선택</span></label><input id="record-group" name="group" maxlength="80">`}<div class="form-error" role="alert"></div><div class="inline-actions record-form-actions"><button type="button" class="secondary" id="cancel-record">취소</button><button class="primary" id="save-record" disabled>저장</button></div></form>`);
+  const form=dialog.querySelector('#record-form'),save=form.querySelector('#save-record');
+  const snapshot=()=>JSON.stringify([...new FormData(form)]);
+  const original=snapshot();
+  const updateSave=()=>{save.disabled=snapshot()===original;};
+  form.addEventListener('input',updateSave);
+  form.addEventListener('change',updateSave);
+  form.querySelector('#cancel-record').onclick=()=>{if(record)groupDetail(record.id);else void closeDialog();};
 }
 async function saveRecord(record) {
     if(saving)return;
@@ -213,6 +220,7 @@ document.addEventListener('click',action);
 document.addEventListener('submit',async event=>{
   const form=event.target;event.preventDefault();const fd=new FormData(form);
   if(form.id==='record-form') {
+    if(form.querySelector('#save-record')?.disabled)return;
     try { const old=data().records.find(r=>r.id===form.dataset.id);const record=validateRecord({id:old?.id||crypto.randomUUID(),date:old?.date||selected,text:fd.get('text'),summary:fd.get('summary'),group:old?old.group:fd.get('group'),result:old?.result||'',themes:old?old.themes:fd.getAll('themes'),saved:old?.saved||false},today(),!!old);await saveRecord(record); }
     catch(error){form.querySelector('.form-error').textContent=error.message;}return;
   }
@@ -309,7 +317,7 @@ function reviewCodex(job) {
 
 
 function cloudSettings() {
-  return `<div class="page-heading"><h1>기록과 알림을 설정해요.</h1></div><div class="settings-grid"><section class="card"><span class="pill">내 계정에 저장</span><h2>나의 기록 보관</h2><button class="text-button" data-action="codex-settings">이 컴퓨터의 Codex 연결 설정</button><p>같은 계정으로 로그인한 기기에서 기록을 함께 볼 수 있어요. 이 기기에는 저장 전 백업과 전송하지 못한 입력이 남아요.</p><div class="inline-actions"><button class="secondary" data-action="export">기록 백업하기 ↓</button><button class="secondary" data-action="cloud-refresh">최신 기록 불러오기</button><label class="secondary file-label">백업 가져오기<input type="file" id="import-file" accept="application/json,.json"></label><a class="secondary" href="/cdn-cgi/access/logout">로그아웃</a></div><p class="footnote">로컬 보미에서 백업한 파일을 가져올 수 있어요. 가져오기는 현재 기록을 교체하므로 먼저 양쪽을 백업해주세요.</p></section><section class="card"><h2>하루를 챙기는 알림</h2><p>알림을 받을 기기마다 아래 버튼으로 허용해주세요. 아이폰은 먼저 홈 화면에 보미를 추가해주세요.</p><form id="reminder-form"><label for="reminder-time">알림 받을 시각 · 한국시간</label><input type="time" id="reminder-time" name="time" value="${esc(data().reminder)}"><div class="inline-actions"><button class="primary">시각 저장</button><button type="button" data-action="reminder-off">모든 기기 알림 끄기</button></div></form><div class="inline-actions"><button class="secondary" data-action="cloud-push">이 기기에서 알림 받기</button><button class="text-button" data-action="cloud-unsubscribe">이 기기 알림 해제</button></div><p class="footnote">설정 시각부터 약 5분 간격으로 확인해 하루 한 번 보내요. 이미 기록했거나 쉬어가는 날에는 보내지 않아요. 네트워크·집중 모드에 따라 늦게 도착할 수 있어요.</p></section></div>`;
+  return `<div class="page-heading"><h1>기록과 알림을 설정해요.</h1></div><div class="settings-grid"><section class="card"><span class="pill">내 계정에 저장</span><h2>나의 기록 보관</h2><button class="text-button" data-action="codex-settings">이 컴퓨터의 Codex 연결 설정</button><p>같은 계정에서 저장한 기록은 모든 기기에 자동으로 반영돼요.</p><div class="inline-actions"><button class="secondary" data-action="export">기록 백업하기 ↓</button><label class="secondary file-label">백업 가져오기<input type="file" id="import-file" accept="application/json,.json"></label><a class="secondary" href="/cdn-cgi/access/logout">로그아웃</a></div><p class="footnote">로컬 보미에서 백업한 파일을 가져올 수 있어요. 가져오기는 현재 기록을 교체하므로 먼저 양쪽을 백업해주세요.</p></section><section class="card"><h2>하루를 챙기는 알림</h2><p>알림을 받을 기기마다 아래 버튼으로 허용해주세요. 아이폰은 먼저 홈 화면에 보미를 추가해주세요.</p><form id="reminder-form"><label for="reminder-time">알림 받을 시각 · 한국시간</label><input type="time" id="reminder-time" name="time" value="${esc(data().reminder)}"><div class="inline-actions"><button class="primary">시각 저장</button><button type="button" data-action="reminder-off">모든 기기 알림 끄기</button></div></form><div class="inline-actions"><button class="secondary" data-action="cloud-push">이 기기에서 알림 받기</button><button class="text-button" data-action="cloud-unsubscribe">이 기기 알림 해제</button></div></section></div>`;
 }
 function cloudBanner() {
   return cloud.pending().length ? '<div class="banner error" role="status">서버 저장이 끝나지 않은 입력이 이 기기에 남아 있어요. <button data-action="cloud-retry">저장 다시 시도</button><button data-action="cloud-recover">입력 백업 후 최신 기록 불러오기</button></div>' : '';
@@ -347,3 +355,28 @@ async function cloudAction(kind) {
     }
   }catch(error){toast(error.message);}
 }
+
+
+let refreshingCloud=false;
+function canRefreshCloud() {
+  return cloud&&!demo&&!saving&&!cloud.busy&&!dialog.open&&!document.hidden&&!cloud.pending().length&&
+    !document.querySelector('form :focus')&&
+    ![...document.querySelectorAll('form input,form textarea')].some(el=>el.type==='checkbox'||el.type==='radio'?el.checked!==el.defaultChecked:el.value!==el.defaultValue);
+}
+async function refreshCloudRecords() {
+  if(refreshingCloud||!canRefreshCloud())return;
+  refreshingCloud=true;
+  const revision=cloud.revision;
+  try {
+    const latest=await api('/api/state');
+    if(!canRefreshCloud()||cloud.revision!==revision)return;
+    if(!Number.isSafeInteger(latest.revision)||latest.revision<=revision)return;
+    const next=validateState(latest.state);
+    cloud.revision=latest.revision;state=next;render();
+  } catch { /* A later focus or interval retries without discarding local input. */ }
+  finally {refreshingCloud=false;}
+}
+setInterval(refreshCloudRecords,10000);
+window.addEventListener('focus',refreshCloudRecords);
+document.addEventListener('visibilitychange',refreshCloudRecords);
+dialog.addEventListener('close',refreshCloudRecords);
