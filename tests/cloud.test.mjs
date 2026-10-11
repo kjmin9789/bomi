@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {Miniflare,convertV4MiniflareOptions} from 'miniflare';
 import {generateKeyPair, exportJWK, SignJWT, createLocalJWKSet} from 'jose';
-import {authenticate, handleRequest, saveState, readState, reminderDue, sendReminders, validateSubscription} from '../cloud/worker.js';
+import {authenticate, handleRequest, saveState, readState, reminderDue, dueNotifications, sendReminders, validateSubscription} from '../cloud/worker.js';
 import {emptyState, today} from '../app/model.js';
 
 test('Cloudflare 인증·저장·알림 통합',async t=>{
@@ -71,12 +71,14 @@ test('Cloudflare 인증·저장·알림 통합',async t=>{
     const recipient=await crypto.subtle.generateKey({name:'ECDH',namedCurve:'P-256'},true,['deriveBits']);
     const subscription={endpoint:'https://web.push.apple.com/test',keys:{auth:Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString('base64url'),p256dh:Buffer.from(await crypto.subtle.exportKey('raw',recipient.publicKey)).toString('base64url')}};
     const s=emptyState();s.reminder='20:00';
+    s.routines=[{id:'a',title:'연습 확인',days:[0,1],time:'20:00',kind:'activity',enabled:true,before:''},{id:'b',title:'복습 확인',days:[0,1],time:'20:00',kind:'activity',enabled:true,before:''}];
+    assert.equal(dueNotifications(s,new Date('2026-10-11T11:00:00Z')).length,3);
     await saveState(DB,env.ALLOWED_EMAIL,input(2,s));
     const response=await handleRequest(await request('/api/push','POST',subscription),pushEnv,resolver);assert.equal(response.status,200);
     let calls=0;
     const send=async(url,payload)=>{calls++;assert.equal(url,subscription.endpoint);assert.equal(payload.method,'POST');assert.equal(payload.redirect,'error');return new Response(null,{status:201});};
     await Promise.all([sendReminders(pushEnv,new Date('2026-10-11T11:00:00Z'),send),sendReminders(pushEnv,new Date('2026-10-11T11:00:00Z'),send)]);
-    assert.equal(calls,1);
+    assert.equal(calls,3);
     await sendReminders(pushEnv,new Date('2026-10-12T11:00:00Z'),async()=>new Response(null,{status:410}));
     assert.equal((await DB.prepare('SELECT COUNT(*) AS n FROM subscriptions').first()).n,0);
   });

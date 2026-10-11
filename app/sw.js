@@ -3,7 +3,7 @@ self.addEventListener('push', event => {
   let message;
   try { message = event.data.json(); } catch { return; }
   event.waitUntil(self.registration.showNotification('보미', {
-    body:'혹시 오늘 해낸 일이 있나요? 하나만 남겨볼까요?',
+    body:typeof message.body==='string'?message.body.slice(0,200):'보미가 물어볼 일이 있어요.',
     icon:'/assets/flower-stage-3.png', tag:`bomi-${message.day || 'today'}`, data:{url:'/'}
   }));
 });
