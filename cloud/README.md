@@ -17,6 +17,8 @@ Node.js 22 이상에서 `npm ci`, `npm test`, `npm run cloud:check`를 실행한
 7. `npm run cloud:keys`가 생성하는 `.data/cloudflare/push-secrets.json`을 `npx wrangler secret bulk .data/cloudflare/push-secrets.json --config wrangler.private.jsonc`로 등록한다. 키 원문은 출력하지 않고 파일은 보관한다. 키를 바꾸면 기존 기기 재등록이 필요하다.
 8. 로그아웃 상태·다른 이메일의 API 차단을 확인한 뒤, 본인 로그인으로 저장·재조회·다른 기기 조회를 확인한다. 아이폰에서 홈 화면 추가 → 알림 권한 → 설정에서 기기 등록과 시각 저장 → 앱을 닫고 실제 수신까지 검증한다.
 
+Access의 Zero Trust Free 가입 화면에서 카드 등록·약관·초과 사용량 청구 동의를 요구할 수 있다. 무료 기본요금이 초과요금 없음까지 뜻하지 않는다. 이 단계는 소유자가 직접 조건을 검토·활성화하며, 에이전트는 결제 정보 입력·약관 동의·유료 업그레이드를 대신하지 않는다.
+
 ## 저장과 복구
 
 - 클라우드 저장 전에 브라우저에 이전 상태와 이번 입력을 보존한다. 서버 성공 응답 전에는 꽃이나 완료를 확정하지 않는다.
