@@ -121,8 +121,11 @@ export function bedtimeBefore(a) { return a.bedtime<`${a.date}T${a.before}`; }
 
 export function routineSchedule(r) {
   const days=r.days.length===7?'매일':r.days.slice().sort((a,b)=>a-b).map(d=>['일','월','화','수','목','금','토'][d]).join('·')+'요일';
-  const [hour,minute]=r.time.split(':').map(Number);
-  return `${days} ${hour<12?'오전':'오후'} ${hour%12||12}시${minute?` ${minute}분`:''}`;
+  return `${days} ${routineTime(r.time)}`;
+}
+export function routineTime(time) {
+  const [hour,minute]=time.split(':').map(Number);
+  return `${hour<12?'오전':'오후'} ${hour%12||12}시${minute?` ${minute}분`:''}`;
 }
 export function saveRoutineAnswer(state,input,themes) {
   const answer=validateCheckin(input);

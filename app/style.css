@@ -78,5 +78,5 @@ dialog > .group-tags{justify-content:flex-start;margin:0 0 12px}.record-mark svg
 .group-chevron{color:var(--muted)}
 
 dialog #group-theme.theme-picker{margin-top:14px}
-.routine-intro{margin-bottom:24px}.routine-intro p{margin-top:12px}.routine-list{display:grid;gap:20px}.routine-card h2{font-size:20px}.routine-schedule{font-size:20px;font-weight:700;margin:18px 0 10px}.routine-card .chips{margin-top:16px}.routine-card .inline-actions{flex-wrap:wrap}.routine-days{border:0;padding:0}#routine-form select{width:100%;min-height:48px;font:inherit}#routine-form>label{margin-top:18px}
+.routine-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:20px}.routine-card h2{font-size:20px}.routine-schedule{font-size:20px;font-weight:700;margin:18px 0 10px}.routine-card{min-width:0}.routine-card .section-top{flex-wrap:wrap}.routine-weekdays{display:flex;flex-wrap:wrap;gap:8px}.routine-weekdays .count{margin:0}.routine-card .inline-actions{flex-wrap:wrap}.routine-days{border:0;padding:0}#routine-form select{width:100%;min-height:48px;font:inherit}#routine-form>label{margin-top:18px}
 @media(max-width:600px){nav{grid-template-columns:repeat(6,minmax(84px,1fr));overflow-x:auto}nav button{white-space:nowrap}.routine-card .section-top{flex-wrap:wrap}.routine-card .inline-actions{align-items:stretch}}
