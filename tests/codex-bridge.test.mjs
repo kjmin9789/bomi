@@ -73,3 +73,37 @@ test('과거 날짜 요청과 완료 초안은 선택한 한국 날짜를 유지
  assert.equal(ready.job.status,'ready');assert.equal(ready.job.records[0].date,past);
  assert.throws(()=>validateDraft({...draft(job),date},job));
 });
+
+test('클라우드 연결은 지정한 HTTPS 원본·요청 헤더만 허용한다',async t=>{
+ const origin='https://bomi.example.com';let calls=0;
+ const server=createAppServer({status:async()=>({connected:true,job:null}),collect:async()=>{calls++;return {job:{status:'queued'}};}},{cloudOrigin:origin});
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));t.after(()=>new Promise(r=>server.close(r)));
+ const base=`http://127.0.0.1:${server.address().port}/api/codex`;
+ const headers={Origin:origin,'Sec-Fetch-Site':'cross-site','X-Bomi-Request':'1'};
+ const preflight=await fetch(`${base}/collect`,{method:'OPTIONS',headers:{Origin:origin,'Access-Control-Request-Method':'POST','Access-Control-Request-Headers':'content-type,x-bomi-request','Access-Control-Request-Private-Network':'true'}});
+ assert.equal(preflight.status,204);assert.equal(preflight.headers.get('Access-Control-Allow-Origin'),origin);assert.equal(preflight.headers.get('Access-Control-Allow-Private-Network'),'true');
+ assert.equal((await fetch(`${base}/status`,{headers})).status,200);
+ assert.equal((await fetch(`${base}/status`,{headers:{Origin:origin}})).status,403);
+ const other=await fetch(`${base}/status`,{headers:{...headers,Origin:'https://evil.example'}});assert.equal(other.status,403);assert.equal(other.headers.get('Access-Control-Allow-Origin'),null);
+ assert.equal((await fetch(`${base}/collect`,{method:'POST',headers:{...headers,'Content-Type':'text/plain'},body:'{}'})).status,403);
+ assert.equal(calls,0);
+ assert.equal((await fetch(`${base}/collect`,{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({date})})).status,200);assert.equal(calls,1);
+ assert.throws(()=>createAppServer({}, {cloudOrigin:'https://example.com/path'}));
+});
+
+test('새 초안의 내용 묶음 검증과 이전 초안 호환, 이름 변경에도 식별자 유지',()=>{
+ const job={id:'job',date},raw=draft(job),item=raw.records[0];
+ const grouped=group=>validateDraft({...raw,records:[{...item,group}]},job).records[0];
+ assert.equal(grouped(' 글 작성 ').group,'글 작성');
+ assert.equal(grouped('글 작성').id,grouped('콘텐츠 준비').id);
+ assert.equal(grouped('글 작성').id,validateDraft(raw,job).records[0].id);
+ for(const group of [null,{},'x'.repeat(81),'두\n줄','두\t칸'])assert.throws(()=>grouped(group));
+});
+test('요청은 내용 기준의 공통 묶음과 구체적인 행동을 요구한다',async t=>{
+ let message;const {directory,bridge}=await fixture(t,async(id,text)=>{message=text;});
+ const {job}=await bridge.collect(date);
+ const instructions=JSON.parse(await readFile(join(directory,`${job.id}.request.json`)));
+ assert.match(instructions.schema.records[0].group,/공통 묶음/);
+ assert.match(message,/프로젝트가 달라도 같은 목적이면 같은 group/);
+ assert.match(message,/원본 threadId를 유지/);
+});

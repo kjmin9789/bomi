@@ -26,13 +26,23 @@ export function activeThemes(records, date) {
 export function flowerStage(active) {
   return Math.min(3, active.filter(Boolean).length);
 }
+export function groupRecords(records) {
+  const groups=new Map();
+  for(const record of records) {
+    const name=record.group?.trim()||'';
+    if(!groups.has(name))groups.set(name,[]);
+    groups.get(name).push(record);
+  }
+  return [...groups];
+}
 export function validateRecord(record, maxDate=today(), allowLegacy=false) {
   if (!record || typeof record.id !== 'string' || record.id.length>100 || !record.id) throw new Error('기록 식별자를 확인해주세요.');
   if (!validDate(record.date) || record.date>maxDate) throw new Error('실제로 한 일은 오늘까지의 날짜로 남겨주세요.');
   if (typeof record.text!=='string' || !record.text.trim() || record.text.length>1000) throw new Error('한 일을 1~1,000자로 적어주세요.');
   if (typeof record.result!=='string' || record.result.length>1000) throw new Error('남은 결과는 1,000자까지 적을 수 있어요.');
   if (!Array.isArray(record.themes) || !record.themes.length || record.themes.length>(allowLegacy?ALL_THEMES.length:THEMES.length) || new Set(record.themes).size!==record.themes.length || record.themes.some(id=>!(allowLegacy?ALL_THEMES:THEMES).some(t=>t.id===id))) throw new Error('관련 테마를 한 개 이상 골라주세요.');
-  return {id:record.id,date:record.date,text:record.text.trim(),result:record.result.trim(),themes:[...record.themes], saved:record.saved===true};
+  if(record.group!==undefined && (typeof record.group!=='string'||record.group.length>80||/[\u0000-\u001f]/.test(record.group)))throw new Error('작업 묶음 이름은 한 줄로 80자까지 적어주세요.');
+  return {...(record.group?.trim()?{group:record.group.trim()}:{}),id:record.id,date:record.date,text:record.text.trim(),result:record.result.trim(),themes:[...record.themes], saved:record.saved===true};
 }
 export const emptyState = () => ({version:1,records:[],futures:{},reviews:{},rest:[],reminder:'',snoozed:{},routines:[],checkins:[],onboarded:false});
 export function validateState(data) {

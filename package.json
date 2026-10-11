@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node server.mjs",
+    "bridge": "node server.mjs --bridge",
     "test": "node --test tests/*.test.mjs",
     "cloud:dev": "wrangler dev",
     "cloud:check": "wrangler deploy --dry-run",
