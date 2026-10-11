@@ -1,0 +1,25 @@
+# Default deny: only reviewed application files may be published.
+/*
+!/.gitignore
+!/README.md
+!/package.json
+!/server.mjs
+!/app/
+/app/*
+!/app/index.html
+!/app/app.js
+!/app/model.js
+!/app/style.css
+!/app/manifest.webmanifest
+!/app/icon.svg
+!/app/assets/
+/app/assets/*
+!/app/assets/flower-stage-0.png
+!/app/assets/flower-stage-1.png
+!/app/assets/flower-stage-2.png
+!/app/assets/flower-stage-3.png
+!/tests/
+/tests/*
+!/tests/model.test.mjs
+!/app/assets/GmarketSansTTFBold.ttf
+!/app/assets/GmarketSans-LICENSE.txt
