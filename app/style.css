@@ -38,7 +38,7 @@ dialog .draft-include{display:flex;align-items:center;gap:8px;min-height:44px;ma
 .heading-actions .secondary{background:#E2E2E5;color:var(--ink)}
 .heading-actions .secondary:hover{background:#D5D5D9}
 
-.routine-days{display:flex;flex-wrap:wrap;gap:1.6rem;margin:2rem 0}.routine-days label{display:flex;align-items:center;gap:.6rem;min-height:4.4rem}.routine-days input{width:auto}#checkins{margin-bottom:2.4rem}#checkin-form label{display:block;margin:1.6rem 0}#checkin-form input[type=radio]{width:auto;margin-right:.8rem}
+.routine-days{display:flex;flex-wrap:wrap;gap:1.6rem;margin:2rem 0}.routine-days label{display:flex;align-items:center;gap:.6rem;min-height:4.4rem}.routine-days input{width:auto}#checkin-form label{display:block;margin:1.6rem 0}#checkin-form input[type=radio]{width:auto;margin-right:.8rem}
 #future-form .save-row{justify-content:flex-end}
 .work-group + .work-group{margin-top:24px}.work-group-title{font-size:18px;margin:18px 0 8px;overflow-wrap:anywhere}.work-group .record h3{font-size:16px}
 

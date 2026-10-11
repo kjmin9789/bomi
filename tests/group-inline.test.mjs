@@ -90,3 +90,21 @@ test('저장 버튼은 변경 시 활성화되고 원래 값으로 복원하면 
  values.text='원문';handlers.input();assert.equal(save.disabled,true);
  cancel.onclick();assert.equal(returned,'a');assert.equal(record.text,'원문');
 });
+
+
+test('반복 질문은 오늘 미답변이 있을 때만 표시한다',()=>{
+  const context=vm.createContext({selected:'2026-10-12',today:()=> '2026-10-12',data:()=>({checkins:[{date:'2026-10-12',answer:'done'}]}),routineDue:()=>[],esc:s=>s});
+  vm.runInContext(source.slice(source.indexOf('function checkinsPanel()'),source.indexOf('function routineForm(')),context);
+  assert.equal(vm.runInContext('checkinsPanel()',context),'');
+  context.routineDue=()=>[{id:'pending',title:'확인할 일',kind:'activity'}];
+  assert.match(vm.runInContext('checkinsPanel()',context),/답변하기/);
+  context.selected='2026-10-11';assert.equal(vm.runInContext('checkinsPanel()',context),'');
+});
+test('정각이 되면 없던 질문 카드도 꽃 앞에 삽입한다',()=>{
+  let inserted;
+  const context=vm.createContext({demo:false,storageBlocked:false,page:'today',dialog:{open:false},saving:false,localMode:false,document:{querySelector:s=>s==='#checkins'?null:{insertAdjacentHTML:(position,html)=>inserted={position,html}}},checkinsPanel:()=>'<section id="checkins">질문</section>'});
+  const start=source.indexOf('function routineCheck()');
+  vm.runInContext(source.slice(start,source.indexOf('setInterval(routineCheck',start)),context);
+  vm.runInContext('routineCheck()',context);
+  assert.equal(inserted.position,'afterbegin');assert.match(inserted.html,/checkins/);
+});
