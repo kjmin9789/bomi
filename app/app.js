@@ -56,7 +56,7 @@ function recordRow(r,action='detail') {
   return `<button class="record record-open" data-action="${action}" data-id="${esc(r.id)}" aria-label="${esc(r.summary||r.text)} · ${action==='group'?'묶음 내역 보기':'상세 보기'}"><span class="record-mark" aria-hidden="true">✓</span><span class="record-body"><strong class="record-title">${esc(r.summary||r.text)}</strong></span><span class="quiet" aria-hidden="true">›</span></button>`;
 }
 function groupTags(items) {
-  return `<span class="group-tags">${[...new Set(items.flatMap(r=>r.themes))].map(id=>`<span class="pill">${esc(theme(id).name)}</span>`).join('')}</span>`;
+  return `<span class="group-tags">${[...new Set(items.flatMap(r=>r.themes))].map(id=>`<span class="pill" data-theme="${esc(id)}" style="--accent:${theme(id).color}">${esc(theme(id).name)}</span>`).join('')}</span>`;
 }
 function recordsList(records) {
   if(!records.length) return `<div class="empty"><span>아직 기록이 없어요.</span><p>이미 한 일이 있다면 한 줄만 적어보세요.</p></div>`;
