@@ -81,3 +81,15 @@ test('Cloudflare 인증·저장·알림 통합',async t=>{
     assert.equal((await DB.prepare('SELECT COUNT(*) AS n FROM subscriptions').first()).n,0);
   });
 });
+
+test('공개 이미지·폰트만 브라우저에 캐시하고 문서·오류는 저장하지 않는다',async()=>{
+ const env={ASSETS:{fetch:async()=>new Response('asset')}};
+ for(const path of ['/assets/flower-stage-2.png','/assets/bomi-logo.png','/assets/OwnglyphCorncorn.ttf']){
+  const response=await handleRequest(new Request('https://bomi.example'+path),env);
+  assert.equal(response.headers.get('cache-control'),'private, max-age=86400');
+  assert.equal(response.headers.get('x-content-type-options'),'nosniff');
+ }
+ for(const path of ['/','/app.js','/assets/private.json'])assert.equal((await handleRequest(new Request('https://bomi.example'+path),env)).headers.get('cache-control'),'no-store');
+ const failed={ASSETS:{fetch:async()=>new Response('missing',{status:404})}};
+ assert.equal((await handleRequest(new Request('https://bomi.example/assets/flower-stage-2.png'),failed)).headers.get('cache-control'),'no-store');
+});
