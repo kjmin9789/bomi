@@ -41,3 +41,9 @@ The navigation uses original Wanted Montage SVG paths under the MIT license abov
 - https://github.com/wanteddev/montage-web/blob/main/packages/icon/src/icon-calendar.tsx
 - https://github.com/wanteddev/montage-web/blob/main/packages/icon/src/icon-bookmark.tsx
 - https://github.com/wanteddev/montage-web/blob/main/packages/icon/src/icon-setting.tsx
+
+## Disclosure icon
+
+Expandable records use the original Wanted Montage IconChevronDown SVG path under the MIT license above.
+
+- https://github.com/wanteddev/montage-web/blob/main/packages/icon/src/icon-chevron-down.tsx
