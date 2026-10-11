@@ -65,3 +65,16 @@ test('제목 편집 시 제목·개수·연필을 숨기고 저장 버튼으로 
  const failed=fixture(false);failed.edit.onclick();failed.input.value='새 제목';await failed.save.onclick();
  assert.equal(failed.editor.hidden,false);assert.equal(failed.heading.hidden,true);assert.equal(failed.save.disabled,false);
 });
+
+test('자동 갱신은 새 서버 기록을 반영하되 편집 중이거나 저장이 경합하면 건너뛴다',async()=>{
+ let rendered=0,resolve,blocked=false;
+ const cloud={revision:1,busy:false,pending:()=>[]};
+ const document={hidden:false,querySelector:()=>blocked,querySelectorAll:()=>[],addEventListener(){}};
+ const context=vm.createContext({cloud,demo:false,saving:false,dialog:{open:false,addEventListener(){}},document,window:{addEventListener(){}},setInterval(){},api:()=>new Promise(r=>resolve=r),validateState:s=>s,render:()=>rendered++});
+ vm.runInContext(source.slice(source.indexOf('let refreshingCloud=false;')),context);
+ const first=context.refreshCloudRecords();resolve({revision:2,state:{records:['remote']}});await first;
+ assert.equal(cloud.revision,2);assert.equal(rendered,1);
+ blocked=true;await context.refreshCloudRecords();assert.equal(rendered,1);
+ blocked=false;const race=context.refreshCloudRecords();cloud.revision=3;resolve({revision:2,state:{records:[]}});await race;
+ assert.equal(cloud.revision,3);assert.equal(rendered,1);
+});

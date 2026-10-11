@@ -7,8 +7,28 @@ export async function api(path, method = 'GET', body) {
   });
   let value;
   try { value = await response.json(); } catch { throw new Error('다시 로그인한 뒤 연결을 확인해주세요.'); }
-  if (!response.ok) throw new Error(value.error || '저장하지 못했어요. 입력은 이 기기에 보존했어요.');
+  if (!response.ok) { const error=new Error(value.error || '저장하지 못했어요. 입력은 이 기기에 보존했어요.'); error.status=response.status; throw error; }
   return value;
+}
+
+// Three-way merge preserves unrelated edits and rejects competing changes to the same field.
+export function mergeStates(base, local, remote) {
+  const equal=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+  function merge(b,l,r) {
+    if(equal(l,b))return r;
+    if(equal(r,b)||equal(l,r))return l;
+    if(b&&l&&r&&!Array.isArray(b)&&typeof b==='object'&&typeof l==='object'&&typeof r==='object') {
+      const result={};
+      for(const key of new Set([...Object.keys(b),...Object.keys(l),...Object.keys(r)])) {
+        const value=merge(b[key],l[key],r[key]);if(value!==undefined)result[key]=value;
+      }
+      return result;
+    }
+    throw new Error('같은 내용을 다른 기기에서 수정했어요. 입력은 이 기기에 보존했어요.');
+  }
+  const keyed=state=>({...state,records:Object.fromEntries(state.records.map(r=>[r.id,r])),rest:Object.fromEntries(state.rest.map(d=>[d,true]))});
+  const result=merge(keyed(base),keyed(local),keyed(remote));
+  return validateState({...result,records:Object.values(result.records),rest:Object.keys(result.rest)});
 }
 
 export class CloudStore {
@@ -40,21 +60,36 @@ export class CloudStore {
       // Local evidence and the proposed write exist before the remote mutation.
       this.storage.setItem(`${this.prefix}before`,JSON.stringify(validateState(previous)));
       this.storage.setItem(key,JSON.stringify(input));
-      await this.commit({key,input});
+      return await this.commit({key,input});
     } finally { this.busy = false; }
   }
   async commit({key,input}) {
-    const result = await this.request('/api/state','PUT',input);
-    if (result.revision !== input.revision + 1) throw new Error('저장 결과를 다시 확인해주세요.');
-    this.revision = result.revision;
-    this.storage.removeItem(key);
+    for(let attempt=0;attempt<3;attempt++) {
+      try {
+        const result = await this.request('/api/state','PUT',input);
+        if (result.revision !== input.revision + 1) throw new Error('저장 결과를 다시 확인해주세요.');
+        this.revision = result.revision;
+        this.storage.removeItem(key);
+        return validateState(input.state);
+      } catch(error) {
+        if(error.status!==409||attempt===2)throw error;
+        const latest=await this.request('/api/state');
+        if(!Number.isSafeInteger(latest.revision)||latest.revision<0)throw new Error('저장 상태를 확인해주세요.');
+        const base=validateState(JSON.parse(this.storage.getItem(`${this.prefix}before`)));
+        const merged=mergeStates(base,input.state,validateState(latest.state));
+        input={...input,state:merged,revision:latest.revision,mutation:crypto.randomUUID()};
+        // Persist the rebased payload before retrying; retain the original backup until success.
+        this.storage.setItem(key,JSON.stringify(input));
+      }
+    }
   }
+
   async retry() {
     if (this.busy) throw new Error('저장 중이에요. 잠시 기다려주세요.');
     const items = this.pending();
     if (items.length !== 1) throw new Error('보존된 입력을 백업한 뒤 최신 기록을 불러와주세요.');
     this.busy = true;
-    try { await this.commit(items[0]); return validateState(items[0].input.state); }
+    try { return await this.commit(items[0]); }
     finally { this.busy = false; }
   }
 }

@@ -26,7 +26,7 @@ async function update(change) {
     const checked=validateState(next);
     if(demo) demoData=checked;
     else if(cloud) {
-      await cloud.save(checked,state); state=checked;
+      state=await cloud.save(checked,state);
     } else {
       if(!localMode) throw new Error('서버 연결을 확인해주세요.');
       if(storageBlocked) throw new Error('기존 저장 데이터를 읽지 못했어요. 설정에서 원본을 먼저 백업해주세요.');
@@ -309,7 +309,7 @@ function reviewCodex(job) {
 
 
 function cloudSettings() {
-  return `<div class="page-heading"><h1>기록과 알림을 설정해요.</h1></div><div class="settings-grid"><section class="card"><span class="pill">내 계정에 저장</span><h2>나의 기록 보관</h2><button class="text-button" data-action="codex-settings">이 컴퓨터의 Codex 연결 설정</button><p>같은 계정으로 로그인한 기기에서 기록을 함께 볼 수 있어요. 이 기기에는 저장 전 백업과 전송하지 못한 입력이 남아요.</p><div class="inline-actions"><button class="secondary" data-action="export">기록 백업하기 ↓</button><button class="secondary" data-action="cloud-refresh">최신 기록 불러오기</button><label class="secondary file-label">백업 가져오기<input type="file" id="import-file" accept="application/json,.json"></label><a class="secondary" href="/cdn-cgi/access/logout">로그아웃</a></div><p class="footnote">로컬 보미에서 백업한 파일을 가져올 수 있어요. 가져오기는 현재 기록을 교체하므로 먼저 양쪽을 백업해주세요.</p></section><section class="card"><h2>하루를 챙기는 알림</h2><p>알림을 받을 기기마다 아래 버튼으로 허용해주세요. 아이폰은 먼저 홈 화면에 보미를 추가해주세요.</p><form id="reminder-form"><label for="reminder-time">알림 받을 시각 · 한국시간</label><input type="time" id="reminder-time" name="time" value="${esc(data().reminder)}"><div class="inline-actions"><button class="primary">시각 저장</button><button type="button" data-action="reminder-off">모든 기기 알림 끄기</button></div></form><div class="inline-actions"><button class="secondary" data-action="cloud-push">이 기기에서 알림 받기</button><button class="text-button" data-action="cloud-unsubscribe">이 기기 알림 해제</button></div><p class="footnote">설정 시각부터 약 5분 간격으로 확인해 하루 한 번 보내요. 이미 기록했거나 쉬어가는 날에는 보내지 않아요. 네트워크·집중 모드에 따라 늦게 도착할 수 있어요.</p></section></div>`;
+  return `<div class="page-heading"><h1>기록과 알림을 설정해요.</h1></div><div class="settings-grid"><section class="card"><span class="pill">내 계정에 저장</span><h2>나의 기록 보관</h2><button class="text-button" data-action="codex-settings">이 컴퓨터의 Codex 연결 설정</button><p>같은 계정에서 저장한 기록은 모든 기기에 자동으로 반영돼요.</p><div class="inline-actions"><button class="secondary" data-action="export">기록 백업하기 ↓</button><label class="secondary file-label">백업 가져오기<input type="file" id="import-file" accept="application/json,.json"></label><a class="secondary" href="/cdn-cgi/access/logout">로그아웃</a></div><p class="footnote">로컬 보미에서 백업한 파일을 가져올 수 있어요. 가져오기는 현재 기록을 교체하므로 먼저 양쪽을 백업해주세요.</p></section><section class="card"><h2>하루를 챙기는 알림</h2><p>알림을 받을 기기마다 아래 버튼으로 허용해주세요. 아이폰은 먼저 홈 화면에 보미를 추가해주세요.</p><form id="reminder-form"><label for="reminder-time">알림 받을 시각 · 한국시간</label><input type="time" id="reminder-time" name="time" value="${esc(data().reminder)}"><div class="inline-actions"><button class="primary">시각 저장</button><button type="button" data-action="reminder-off">모든 기기 알림 끄기</button></div></form><div class="inline-actions"><button class="secondary" data-action="cloud-push">이 기기에서 알림 받기</button><button class="text-button" data-action="cloud-unsubscribe">이 기기 알림 해제</button></div></section></div>`;
 }
 function cloudBanner() {
   return cloud.pending().length ? '<div class="banner error" role="status">서버 저장이 끝나지 않은 입력이 이 기기에 남아 있어요. <button data-action="cloud-retry">저장 다시 시도</button><button data-action="cloud-recover">입력 백업 후 최신 기록 불러오기</button></div>' : '';
@@ -347,3 +347,28 @@ async function cloudAction(kind) {
     }
   }catch(error){toast(error.message);}
 }
+
+
+let refreshingCloud=false;
+function canRefreshCloud() {
+  return cloud&&!demo&&!saving&&!cloud.busy&&!dialog.open&&!document.hidden&&!cloud.pending().length&&
+    !document.querySelector('form :focus')&&
+    ![...document.querySelectorAll('form input,form textarea')].some(el=>el.type==='checkbox'||el.type==='radio'?el.checked!==el.defaultChecked:el.value!==el.defaultValue);
+}
+async function refreshCloudRecords() {
+  if(refreshingCloud||!canRefreshCloud())return;
+  refreshingCloud=true;
+  const revision=cloud.revision;
+  try {
+    const latest=await api('/api/state');
+    if(!canRefreshCloud()||cloud.revision!==revision)return;
+    if(!Number.isSafeInteger(latest.revision)||latest.revision<=revision)return;
+    const next=validateState(latest.state);
+    cloud.revision=latest.revision;state=next;render();
+  } catch { /* A later focus or interval retries without discarding local input. */ }
+  finally {refreshingCloud=false;}
+}
+setInterval(refreshCloudRecords,10000);
+window.addEventListener('focus',refreshCloudRecords);
+document.addEventListener('visibilitychange',refreshCloudRecords);
+dialog.addEventListener('close',refreshCloudRecords);
