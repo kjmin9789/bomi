@@ -93,6 +93,17 @@ function render() {
   app.innerHTML=`<a class="skip" href="#main">본문으로 이동</a><aside class="sidebar"><a class="brand" href="#" data-action="nav" data-page="today"><img src="/assets/bomi-logo.png" alt="보미" width="1981" height="724"></a><nav aria-label="주 메뉴">${[['today','오늘의 보미'],['future','나의 미래'],['review','주간 회고'],['saved','보관함'],['settings','설정']].map(([id,name])=>`<button data-action="nav" data-page="${id}" class="${page===id?'current':''}" ${page===id?'aria-current="page"':''}><span aria-hidden="true">${navIcons[id]}</span>${name}</button>`).join('')}</nav><div class="sidebar-bottom"><div class="small-flower">${flower([false,true,false])}</div><p>한꺼번에 말고,<br>쉬운 것 하나부터.</p><button class="demo-button" data-action="demo">${demo?'내 기록으로 돌아가기':'예시로 둘러보기 ↗'}</button></div></aside><div class="workspace">${demo?'<div class="banner">예시 모드예요. 아래 기록은 실제 활동이 아니며 저장되지 않아요. <button data-action="demo">내 기록으로 돌아가기</button></div>':''}${cloud && !demo ? cloudBanner() : ''}${storageBlocked?'<div class="banner error">저장 데이터를 읽지 못했어요. 설정에서 원본을 백업해주세요.</div>':''}<div id="codex-notice"></div><main id="main">${views[page]()}</main></div>`;
 
 }
+let backdropPress=false;
+function outsideDialog(event) {
+  const box=dialog.getBoundingClientRect();
+  return event.target===dialog&&(event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom);
+}
+dialog.addEventListener('pointerdown',event=>{backdropPress=outsideDialog(event);});
+dialog.addEventListener('pointercancel',()=>{backdropPress=false;});
+dialog.addEventListener('click',event=>{
+  if(backdropPress&&outsideDialog(event)&&!saving)dialog.close();
+  backdropPress=false;
+});
 function showDialog(html) { clearTimeout(codexTimer); delete dialog.dataset.codex; dialog.setAttribute('aria-label','보미 기록과 확인'); dialog.innerHTML=html; if(!dialog.open) dialog.showModal(); }
 const closeButton='<button type="button" class="close" data-action="close" aria-label="닫기">×</button>';
 function recordDetail(id) {
