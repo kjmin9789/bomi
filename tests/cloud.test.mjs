@@ -74,6 +74,8 @@ test('Cloudflare 인증·저장·알림 통합',async t=>{
     s.routines=[{id:'a',title:'연습 확인',days:[0,1],time:'20:00',kind:'activity',enabled:true,before:''},{id:'b',title:'복습 확인',days:[0,1],time:'20:00',kind:'activity',enabled:true,before:''}];
     assert.equal(dueNotifications(s,new Date('2026-10-11T11:00:00Z')).length,3);
     await saveState(DB,env.ALLOWED_EMAIL,input(2,s));
+    const legacy=structuredClone(s);delete legacy.routines;delete legacy.checkins;
+    await assert.rejects(saveState(DB,env.ALLOWED_EMAIL,input(3,legacy)),{status:409});
     const response=await handleRequest(await request('/api/push','POST',subscription),pushEnv,resolver);assert.equal(response.status,200);
     let calls=0;
     const send=async(url,payload)=>{calls++;assert.equal(url,subscription.endpoint);assert.equal(payload.method,'POST');assert.equal(payload.redirect,'error');return new Response(null,{status:201});};

@@ -57,6 +57,7 @@ export async function saveState(db, owner, input) {
   const body = JSON.stringify(state);
   if (new TextEncoder().encode(body).length > MAX_BODY - 1024) throw failure(413, '백업 후 기록 용량을 확인해주세요.');
   const current = await readState(db, owner);
+  if ((current.state.routines.length || current.state.checkins.length) && (!Array.isArray(input.state.routines) || !Array.isArray(input.state.checkins))) throw failure(409, '반복 질문을 보존하려면 보미를 새로고침한 뒤 다시 저장해주세요.');
   if (current.mutation === input.mutation && JSON.stringify(current.state) === body) return {revision:current.revision};
   if (current.revision !== input.revision) throw failure(409, '다른 기기에서 기록이 바뀌었어요. 입력은 이 기기에 보존했어요.');
   const now = Date.now();
