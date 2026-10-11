@@ -44,3 +44,5 @@
 
 !/codex-runner.mjs
 !/tests/codex-runner.test.mjs
+
+!/tests/group-inline.test.mjs

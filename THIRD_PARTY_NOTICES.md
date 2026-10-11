@@ -41,3 +41,13 @@ The navigation uses original Wanted Montage SVG paths under the MIT license abov
 - https://github.com/wanteddev/montage-web/blob/main/packages/icon/src/icon-calendar.tsx
 - https://github.com/wanteddev/montage-web/blob/main/packages/icon/src/icon-bookmark.tsx
 - https://github.com/wanteddev/montage-web/blob/main/packages/icon/src/icon-setting.tsx
+
+## Record action icons
+
+Record actions use the original Wanted Montage IconTrash SVG paths under the MIT license above.
+
+- https://github.com/wanteddev/montage-web/blob/main/packages/icon/src/icon-trash.tsx
+
+The inline group title editor uses Wanted Montage IconPencil under the same MIT license.
+
+- https://github.com/wanteddev/montage-web/blob/main/packages/icon/src/icon-pencil.tsx

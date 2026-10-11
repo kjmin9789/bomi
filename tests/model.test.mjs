@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {groupRecords,activeThemes,flowerStage,validateRecord,validateState,emptyState,weekStart,shiftDate,weekSummary,validDate} from '../app/model.js';
+import {sortedWorkGroups,newestRecords,groupRecords,activeThemes,flowerStage,validateRecord,validateState,emptyState,weekStart,shiftDate,weekSummary,validDate} from '../app/model.js';
 const record=(id,date='2026-10-10',themes=['career'])=>({id,date,text:'원고 준비',result:'임시저장 원고',themes,saved:false});
 test('테마 중복 기록은 실천 테마 수를 바꾸지 않는다',()=>{
   const once=activeThemes([record('1')],'2026-10-10');
@@ -74,4 +74,27 @@ test('내용 묶음은 순서와 원본을 보존하고 백업에서도 유지�
  assert.deepEqual(restored.records[3],old);
  assert.deepEqual(activeThemes(restored.records,a.date),activeThemes(data.records,a.date));
  for(const group of [null,{},'x'.repeat(81),'두\n줄'])assert.throws(()=>validateRecord({...a,group}));
+});
+
+test('짧은 제목은 상세와 별도로 검증하고 백업 왕복에도 보존한다',()=>{
+  const entry={...record('brief'),summary:' 글을 임시저장했다 ',text:'사진과 본문을 수정하고 편집기에 임시저장했다.'};
+  const restored=validateState({...emptyState(),records:[entry]}).records[0];
+  assert.equal(restored.summary,'글을 임시저장했다');
+  assert.equal(restored.text,entry.text);
+  assert.equal(validateRecord({...entry,summary:''}).summary,undefined);
+  for(const summary of [42,'x'.repeat(81),'첫 줄\n다음 줄'])assert.throws(()=>validateRecord({...entry,summary}));
+});
+
+test('묶음 미리보기는 날짜와 같은 날짜의 저장 순서로 최신 기록을 선택한다',()=>{
+ const records=[record('old','2026-10-09'),record('first'),record('last')];
+ assert.deepEqual(newestRecords(records).map(r=>r.id),['last','first','old']);
+ assert.deepEqual(records.map(r=>r.id),['old','first','last']);
+ assert.deepEqual(newestRecords([]),[]);
+});
+
+test('묶음은 개수, 건강·재테크·커리어, 최신 순으로 정렬한다',()=>{
+ const r=(id,group,themes)=>({...record(id,'2026-10-10',themes),group});
+ const rows=[r('1','career-old',['career']),r('2','money',['money']),r('3','health',['health']),r('4','large',['career']),r('5','large',['career']),r('6','career-new',['career'])];
+ assert.deepEqual(sortedWorkGroups(rows).map(([name])=>name),['large','health','money','career-new','career-old']);
+ assert.deepEqual(sortedWorkGroups([r('1','mixed',['career','health']),r('2','money',['money'])]).map(([name])=>name),['mixed','money']);
 });
