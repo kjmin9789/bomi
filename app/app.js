@@ -147,19 +147,18 @@ function recordForm(id='',preferred='') {
   const record=id?data().records.find(r=>r.id===id):null;
   if(id&&!record)return;
   const choices=[...THEMES,...ALL_THEMES.filter(t=>record?.themes.includes(t.id)&&!THEMES.some(active=>active.id===t.id))];
-  showDialog(`${closeButton}<h2>${record?'기록 다듬기':'한 일을 한 줄로 적어볼까요?'}</h2><form id="record-form" data-id="${esc(id)}">${record?'':`<fieldset class="theme-picker"><legend>관련된 테마를 직접 골라주세요</legend>${choices.map(t=>`<label style="--accent:${t.color}"><input type="checkbox" name="themes" value="${t.id}" ${(record?.themes||[preferred]).includes(t.id)?'checked':''}><span>${themeIcons[t.id]||esc(t.mark)}${t.name}</span></label>`).join('')}</fieldset>`}<label for="record-summary">목록에 보일 한 줄 <span class="quiet">선택</span></label><input id="record-summary" name="summary" maxlength="80" placeholder="예: 블로그 글을 임시저장했다" value="${esc(record?.summary||'')}"><label for="record-text">실제로 한 일 · 상세</label><textarea id="record-text" name="text" maxlength="1000" required placeholder="예: 준비하던 글의 제목을 다듬었어">${esc(record?.text||'')}</textarea>${record?'':`<label for="record-group">작업 묶음 <span class="quiet">선택</span></label><input id="record-group" name="group" maxlength="80">`}<div class="form-error" role="alert"></div><button class="primary full">내용 확인하기 →</button></form>`);
+  showDialog(`${closeButton}<h2>${record?'기록 다듬기':'한 일을 한 줄로 적어볼까요?'}</h2><form id="record-form" data-id="${esc(id)}">${record?'':`<fieldset class="theme-picker"><legend>관련된 테마를 직접 골라주세요</legend>${choices.map(t=>`<label style="--accent:${t.color}"><input type="checkbox" name="themes" value="${t.id}" ${(record?.themes||[preferred]).includes(t.id)?'checked':''}><span>${themeIcons[t.id]||esc(t.mark)}${t.name}</span></label>`).join('')}</fieldset>`}<label for="record-summary">목록에 보일 한 줄 <span class="quiet">선택</span></label><input id="record-summary" name="summary" maxlength="80" placeholder="예: 블로그 글을 임시저장했다" value="${esc(record?.summary||'')}"><label for="record-text">실제로 한 일 · 상세</label><textarea id="record-text" name="text" maxlength="1000" required placeholder="예: 준비하던 글의 제목을 다듬었어">${esc(record?.text||'')}</textarea>${record?'':`<label for="record-group">작업 묶음 <span class="quiet">선택</span></label><input id="record-group" name="group" maxlength="80">`}<div class="form-error" role="alert"></div><button class="primary full">저장</button></form>`);
 }
-function reviewRecord(record) {
-  showDialog(`${closeButton}<h2>이렇게 남길까요?</h2><p class="quiet">${fmt(record.date)}</p><div class="preview-record"><div class="chips">${chips(record.themes)}</div><h3>${esc(record.summary||record.text)}</h3>${record.summary?`<p>${esc(record.text)}</p>`:''}</div><p>확인하면 도장과 오늘의 꽃 단계에 반영돼요.</p><div class="inline-actions"><button class="secondary" id="back-record">다시 다듬기</button><button class="primary" id="confirm-record">확인하고 기록 남기기</button></div>`);
-  document.querySelector('#back-record').onclick=()=>{recordForm(data().records.some(r=>r.id===record.id)?record.id:'');const f=document.querySelector('#record-form');f.elements.text.value=record.text;f.elements.summary.value=record.summary||'';if(f.elements.group)f.elements.group.value=record.group||'';f.querySelectorAll('[name="themes"]').forEach(el=>el.checked=record.themes.includes(el.value));};
-  document.querySelector('#confirm-record').onclick=async()=>{
+async function saveRecord(record) {
+    if(saving)return;
+    const editing=data().records.some(r=>r.id===record.id);
     const duplicate=data().records.some(r=>r.id!==record.id&&r.date===record.date&&r.text===record.text&&[...r.themes].sort().join() === [...record.themes].sort().join());
     if(duplicate){toast('같은 날짜에 같은 기록이 있어요. 기존 기록을 확인해주세요.');return;}
     if(!await update(s=>{const index=s.records.findIndex(r=>r.id===record.id); if(index<0)s.records.push(record);else s.records[index]=record;}))return;
     selected=record.date;month=selected.slice(0,7);filter='';page='today';render();
+    if(editing){groupDetail(record.id);toast('수정한 내용을 저장했어요.');return;}
     const future=record.themes.map(id=>data().futures[id]).find(Boolean);
     showDialog(`${closeButton}<div class="celebration">${flower(activeThemes(data().records,selected),'pop')}<h2>잘했어요! 해낸 일을 기록했어요.</h2><p class="celebration-text">${esc(record.text)}</p><div class="chips">${chips(record.themes)}</div><p class="quiet">${future?`바라던 모습: “${esc(future)}”<br>선택한 테마에 실제 한 일을 남겼어요.`:'직접 해낸 일이에요. 나중에 다시 확인할 수 있어요.'}</p><button class="primary full" data-action="close">내 꽃 보러 가기</button></div>`);
-  };
 }
 function download(value,name) { const blob=new Blob([value],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000); }
 // shortcut: 열린 페이지에서만 알림을 검사한다. 닫힌 앱 알림은 서버 푸시 연결이 필요하다.
@@ -210,7 +209,7 @@ document.addEventListener('click',action);
 document.addEventListener('submit',async event=>{
   const form=event.target;event.preventDefault();const fd=new FormData(form);
   if(form.id==='record-form') {
-    try { const old=data().records.find(r=>r.id===form.dataset.id);const record=validateRecord({id:old?.id||crypto.randomUUID(),date:old?.date||selected,text:fd.get('text'),summary:fd.get('summary'),group:old?old.group:fd.get('group'),result:old?.result||'',themes:old?old.themes:fd.getAll('themes'),saved:old?.saved||false},today(),!!old);reviewRecord(record); }
+    try { const old=data().records.find(r=>r.id===form.dataset.id);const record=validateRecord({id:old?.id||crypto.randomUUID(),date:old?.date||selected,text:fd.get('text'),summary:fd.get('summary'),group:old?old.group:fd.get('group'),result:old?.result||'',themes:old?old.themes:fd.getAll('themes'),saved:old?.saved||false},today(),!!old);await saveRecord(record); }
     catch(error){form.querySelector('.form-error').textContent=error.message;}return;
   }
   if(form.id==='future-form'){if(await update(s=>{for(const t of THEMES)s.futures[t.id]=fd.get(t.id).trim();s.onboarded=true;})){toast('바라는 미래를 저장했어요.');}return;}
