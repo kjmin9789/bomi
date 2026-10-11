@@ -39,6 +39,10 @@ export function groupRecords(records) {
 export function newestRecords(records) {
   return records.map((record,index)=>({record,index})).sort((a,b)=>b.record.date.localeCompare(a.record.date)||b.index-a.index).map(item=>item.record);
 }
+export function sortedWorkGroups(records) {
+  const rank=items=>Math.min(...items.flatMap(r=>r.themes.map(id=>({health:0,money:1,career:2}[id]??3))));
+  return groupRecords(newestRecords(records)).sort((a,b)=>b[1].length-a[1].length||rank(a[1])-rank(b[1]));
+}
 export function validateRecord(record, maxDate=today(), allowLegacy=false) {
   if (!record || typeof record.id !== 'string' || record.id.length>100 || !record.id) throw new Error('기록 식별자를 확인해주세요.');
   if (!validDate(record.date) || record.date>maxDate) throw new Error('실제로 한 일은 오늘까지의 날짜로 남겨주세요.');
