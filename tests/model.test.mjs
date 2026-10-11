@@ -64,6 +64,46 @@ test('하루 꽃은 기록 건수가 아닌 실천한 테마 수로 0~3단계',(
   assert.equal(flowerStage(activeThemes(records,'2026-10-09')),0);
 });
 
+test('반복 질문은 한국시간 요일·시각과 개별 답변으로 판단한다', async()=>{
+  const {validateRoutine,routineDue}=await import('../app/model.js');
+  const s=emptyState();
+  s.routines=[validateRoutine({id:'weekly',title:'연습했나요?',kind:'activity',days:[1,3,5],time:'19:00',before:'',enabled:true})];
+  assert.equal(routineDue(s,new Date('2026-10-05T09:59:00Z')).length,0);
+  assert.equal(routineDue(s,new Date('2026-10-05T10:00:00Z')).length,1);
+  assert.equal(routineDue(s,new Date('2026-10-06T10:00:00Z')).length,0);
+  s.records=[{date:'2026-10-05'}];
+  assert.equal(routineDue(s,new Date('2026-10-05T10:00:00Z')).length,1);
+  s.checkins=[{key:'2026-10-05:weekly'}];
+  assert.equal(routineDue(s,new Date('2026-10-05T10:00:00Z')).length,0);
+  assert.equal(routineDue(s,new Date('2026-10-07T10:00:00Z')).length,1);
+  s.rest=['2026-10-07'];
+  assert.equal(routineDue(s,new Date('2026-10-07T10:00:00Z')).length,0);
+  s.rest=[];s.routines[0].enabled=false;
+  assert.equal(routineDue(s,new Date('2026-10-07T10:00:00Z')).length,0);
+});
+test('누운 시각은 전날 밤과 당일 새벽을 구분하고 정확한 기준 시각은 이후다',async()=>{
+  const {validateCheckin,bedtimeBefore}=await import('../app/model.js');
+  const make=bedtime=>validateCheckin({key:'2026-10-05:sleep',routineId:'sleep',date:'2026-10-05',title:'취침 확인',answer:'bedtime',before:'02:00',bedtime},new Date('2026-10-05T00:00:00Z'));
+  assert.equal(bedtimeBefore(make('2026-10-04T23:45')),true);
+  assert.equal(bedtimeBefore(make('2026-10-05T01:59')),true);
+  assert.equal(bedtimeBefore(make('2026-10-05T02:00')),false);
+  assert.equal(bedtimeBefore(make('2026-10-05T02:01')),false);
+  assert.throws(()=>make('2026-10-05T10:00'));
+  assert.throws(()=>make('2026-10-03T23:00'));
+  assert.throws(()=>make('2026-10-05T25:00'));
+});
+test('이전 백업 호환과 반복 질문·답변 보존, 중복 및 잘못된 입력 차단',async()=>{
+  const {validateRoutine}=await import('../app/model.js');
+  const s=emptyState();delete s.routines;delete s.checkins;
+  assert.deepEqual(validateState(s).routines,[]);
+  s.routines=[{id:'test',title:'복습',kind:'activity',days:[0],time:'10:00',before:'',enabled:true}];
+  s.checkins=[{key:'2026-10-04:test',routineId:'test',date:'2026-10-04',title:'복습',answer:'done',bedtime:'',before:''}];
+  assert.deepEqual(validateState(s).checkins,s.checkins);
+  assert.equal(flowerStage(activeThemes(validateState(s).records,'2026-10-04')),0);
+  for(const patch of [{days:[]},{days:[1,1]},{days:[7]},{time:'24:00'},{enabled:'true'},{id:'<unsafe>'}])assert.throws(()=>validateRoutine({...s.routines[0],...patch}));
+  assert.throws(()=>validateState({...s,checkins:[...s.checkins,...s.checkins]}));
+  assert.throws(()=>validateState({...s,routines:[...s.routines,...s.routines]}));
+});
 
 test('내용 묶음은 순서와 원본을 보존하고 백업에서도 유지된다',()=>{
  const a={...record('a'),group:' 글 작성 '},b={...record('b'),group:'생활 도구 만들기'},c={...record('c'),group:'글 작성'},old=record('old');
@@ -97,4 +137,31 @@ test('묶음은 개수, 건강·재테크·커리어, 최신 순으로 정렬한
  const rows=[r('1','career-old',['career']),r('2','money',['money']),r('3','health',['health']),r('4','large',['career']),r('5','large',['career']),r('6','career-new',['career'])];
  assert.deepEqual(sortedWorkGroups(rows).map(([name])=>name),['large','health','money','career-new','career-old']);
  assert.deepEqual(sortedWorkGroups([r('1','mixed',['career','health']),r('2','money',['money'])]).map(([name])=>name),['mixed','money']);
+});
+
+import {today,validateRoutine,saveRoutineAnswer,routineSchedule} from '../app/model.js';
+test('루틴 완료 답변은 한 번만 기록하고 수정·건너뛰기를 반영한다',()=>{
+  const state=emptyState(),date=today();
+  state.routines=[validateRoutine({id:'test-routine',title:'확인한 행동',kind:'activity',days:[1],time:'08:00',enabled:true,themes:['health']})];
+  const answer={key:`${date}:test-routine`,routineId:'test-routine',date,title:'확인한 행동',answer:'done'};
+  saveRoutineAnswer(state,answer,['health']);saveRoutineAnswer(state,answer,['health']);
+  assert.equal(state.records.length,1);assert.equal(state.checkins.length,1);
+  assert.equal(flowerStage(activeThemes(state.records,date)),1);
+  assert.equal(validateState(state).records.length,1);
+  saveRoutineAnswer(state,{...answer,answer:'skip'},[]);
+  assert.equal(state.records.length,0);assert.equal(state.checkins[0].answer,'skip');
+});
+test('확인하지 않은 테마·미래 취침은 기록하지 않고 원상태를 보존한다',()=>{
+  const state=emptyState(),date=today();
+  state.routines=[validateRoutine({id:'r',title:'행동',kind:'activity',days:[1],time:'08:00',enabled:true})];
+  const before=JSON.stringify(state),answer={key:`${date}:r`,routineId:'r',date,title:'행동',answer:'done'};
+  assert.throws(()=>saveRoutineAnswer(state,answer,[]));assert.equal(JSON.stringify(state),before);
+  assert.throws(()=>saveRoutineAnswer(state,answer,['unknown']));assert.equal(JSON.stringify(state),before);
+  const previous=shiftDate(date,-1);
+  saveRoutineAnswer(state,{...answer,answer:'bedtime',bedtime:`${previous}T23:30`,before:'01:00'},['health']);
+  assert.equal(state.records[0].date,previous);
+});
+test('루틴 일정은 한국어 요일과 오전·오후로 표시한다',()=>{
+  assert.equal(routineSchedule({days:[5,1,3],time:'20:30'}),'월·수·금요일 오후 8시 30분');
+  assert.equal(routineSchedule({days:[0,1,2,3,4,5,6],time:'00:00'}),'매일 오전 12시');
 });
