@@ -37,3 +37,5 @@ Access의 Zero Trust Free 가입 화면에서 카드 등록·약관·초과 사�
 클라우드 화면의 Codex 가져오기는 현재 컴퓨터에서 실행한 `npm run bridge -- https://보미주소`에 연결한다. 브라우저가 `127.0.0.1:4174`에 직접 요청하며, Worker가 맥을 원격 실행하지 않는다. 확인한 항목만 현재 클라우드 기록에 추가·갱신한다. 컴퓨터별 초기 연결과 최신 Chrome의 로컬 연결 권한이 필요하다. 상세 절차는 루트 README를 따른다. 전화·음성·유료 AI·회사 자료 수집은 추가하지 않는다. 소스 변경은 PR로 제출하고 소유자가 수동 검토 후 Squash and merge 한다.
 
 공식 참고: [Workers Access](https://developers.cloudflare.com/workers/configuration/cloudflare-access/), [JWT 검증](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/), [Cron](https://developers.cloudflare.com/workers/configuration/cron-triggers/), [아이폰 웹 푸시](https://developer.apple.com/documentation/usernotifications/sending-web-push-notifications-in-web-apps-and-browsers).
+
+브라우저 참고: [Chrome 로컬 네트워크 접근 권한](https://developer.chrome.com/blog/local-network-access?hl=en).

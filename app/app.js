@@ -180,8 +180,11 @@ function bridgeHelp() {
   return localMode ? '' : `<p>이 컴퓨터의 Codex 앱과 보미 연결 프로그램을 실행해주세요. 휴대폰에서는 저장한 기록을 확인하고 직접 입력할 수 있어요.</p><p>보미 폴더의 터미널에서 실행:</p><pre class="bridge-command"><code>npm run bridge -- ${esc(location.origin)}</code></pre><p class="footnote">컴퓨터마다 한 번씩 연결해요. 브라우저가 로컬 연결 권한을 물으면 허용해주세요. 회사 정책에서 차단한 연결은 우회하지 마세요.</p>`;
 }
 async function codexSettings() {
-  let connected=false;try{connected=(await codexApi('status')).connected;}catch{}
-  showDialog(`${closeButton}<h2>이 컴퓨터의 Codex 연결</h2><p class="quiet">${connected?'연결된 채팅이 있어요.':'아직 연결된 채팅이 없어요.'} 정리를 맡길 Codex 채팅의 링크에 있는 ID를 입력해주세요. 이 컴퓨터에만 저장돼요.</p>${bridgeHelp()}<form id="codex-connect"><label for="codex-thread">Codex 채팅 ID</label><input id="codex-thread" name="threadId" required placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"><p class="footnote">개인 프로젝트만 정리해요. 회사 작업은 포함하지 않아요. 다른 컴퓨터에서는 그 기기의 Codex를 별도로 연결해주세요.</p><p class="form-error" role="alert"></p><button class="primary full">연결 저장</button></form>`);
+  showDialog(`${closeButton}<h2>이 컴퓨터의 Codex 연결을 확인하고 있어요.</h2><p>브라우저가 로컬 연결 권한을 요청하면 허용해주세요.</p>`);
+  dialog.dataset.codex='settings';
+  let connected=false,reachable=false;try{connected=(await codexApi('status')).connected;reachable=true;}catch{}
+  if(!dialog.open||dialog.dataset.codex!=='settings')return;
+  showDialog(`${closeButton}<h2>이 컴퓨터의 Codex 연결</h2><p class="quiet">${connected?'연결된 채팅이 있어요.':reachable?'아직 연결된 채팅이 없어요.':'연결 프로그램에 닿지 못했어요. 실행 상태와 브라우저의 로컬 연결 권한을 확인해주세요.'} 정리를 맡길 Codex 채팅의 링크에 있는 ID를 입력해주세요. 이 컴퓨터에만 저장돼요.</p>${bridgeHelp()}<form id="codex-connect"><label for="codex-thread">Codex 채팅 ID</label><input id="codex-thread" name="threadId" required placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"><p class="footnote">개인 프로젝트만 정리해요. 회사 작업은 포함하지 않아요. 다른 컴퓨터에서는 그 기기의 Codex를 별도로 연결해주세요.</p><p class="form-error" role="alert"></p><button class="primary full">연결 저장</button></form>`);
   document.querySelector('#codex-connect').onsubmit=async event=>{event.preventDefault();const f=event.currentTarget;try{await codexApi('connect',{threadId:f.elements.threadId.value.trim()});dialog.close();toast('이 컴퓨터의 Codex 채팅을 연결했어요.');}catch{f.querySelector('.form-error').textContent='채팅 ID와 로컬 서버 연결을 확인해주세요.';}};
 }
 async function collectCodex() {
