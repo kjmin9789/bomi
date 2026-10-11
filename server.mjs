@@ -40,7 +40,6 @@ export function createAppServer(bridge=createBridge(), {cloudOrigin=''}={}) {
       let body='';for await(const chunk of req){body+=chunk;if(Buffer.byteLength(body)>8192)return json(413,{error:'요청이 너무 커요.'});}
       let value;try{value=JSON.parse(body);}catch{return json(400,{error:'요청 형식을 확인해주세요.'});}
       if(path==='/api/codex/collect')return json(200,await bridge.collect(value?.date));
-      if(path==='/api/codex/connect')return json(200,await bridge.connect(value?.threadId));
       if(path==='/api/codex/close')return json(200,await bridge.close(value?.id));
       return json(404,{error:'지원하지 않는 요청이에요.'});
     } catch {return json(400,{error:'요청을 처리하지 못했어요. 연결 설정과 날짜를 확인해주세요.'});}
