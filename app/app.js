@@ -262,7 +262,7 @@ function checkinsPanel() {
 }
 function routineForm(id='') {
   const r=data().routines.find(r=>r.id===id)||{title:'',kind:'activity',days:[0,1,2,3,4,5,6],time:'',before:'01:00',enabled:true};
-  showDialog(`${closeButton}<h2>${id?'일정 수정하기':'루틴 추가하기'}</h2><form id="routine-form" data-id="${esc(id)}"><label for="routine-title">루틴 이름</label><input id="routine-title" name="title" maxlength="100" required value="${esc(r.title)}"><label for="routine-kind">답변 방식</label><select id="routine-kind" name="kind"><option value="activity" ${r.kind==='activity'?'selected':''}>했는지 확인</option><option value="bedtime" ${r.kind==='bedtime'?'selected':''}>지난밤 누운 시각 확인</option></select><fieldset class="routine-days"><legend>요일</legend>${weekdays.map((d,i)=>`<label><input type="checkbox" name="days" value="${i}" ${r.days.includes(i)?'checked':''}>${d}</label>`).join('')}</fieldset><label for="routine-time">물어볼 시각 · 한국시간</label><input type="time" id="routine-time" name="time" value="${r.time}" required><label for="routine-memo">메모</label><textarea id="routine-memo" name="memo" maxlength="500" placeholder="간단한 메모를 남겨주세요.">${esc(r.memo||'')}</textarea>${routineThemes(r.themes)}<div class="form-error" role="alert"></div><button class="primary">일정 저장하기</button></form>`);
+  showDialog(`${closeButton}<h2>${id?'일정 수정하기':'루틴 추가하기'}</h2><form id="routine-form" data-id="${esc(id)}"><label for="routine-title">루틴 이름</label><input id="routine-title" name="title" maxlength="100" required value="${esc(r.title)}"><label for="routine-memo">메모</label><textarea id="routine-memo" name="memo" maxlength="500" placeholder="간단한 메모를 남겨주세요.">${esc(r.memo||'')}</textarea><fieldset class="routine-days"><legend>요일</legend>${weekdays.map((d,i)=>`<label><input type="checkbox" name="days" value="${i}" ${r.days.includes(i)?'checked':''}>${d}</label>`).join('')}</fieldset><label for="routine-time">물어볼 시각 · 한국시간</label><input type="time" id="routine-time" name="time" value="${r.time}" required>${routineThemes(r.themes)}<div class="form-error" role="alert"></div><button class="primary">일정 저장하기</button></form>`);
 }
 function checkinForm(id, key='') {
   const old=key?data().checkins.find(a=>a.key===key):null;
@@ -282,7 +282,7 @@ async function routineSubmit(form,fd) {
   try {
     if(form.id==='routine-form') {
       const old=data().routines.find(r=>r.id===form.dataset.id);
-      const r=validateRoutine({id:old?.id||crypto.randomUUID(),title:fd.get('title'),kind:fd.get('kind'),days:fd.getAll('days').map(Number),time:fd.get('time'),before:old?.before||'01:00',memo:fd.get('memo'),enabled:old?.enabled??true,themes:fd.getAll('themes')});
+      const r=validateRoutine({id:old?.id||crypto.randomUUID(),title:fd.get('title'),kind:'activity',days:fd.getAll('days').map(Number),time:fd.get('time'),before:old?.before||'01:00',memo:fd.get('memo'),enabled:old?.enabled??true,themes:fd.getAll('themes')});
       if(!await update(s=>{const i=s.routines.findIndex(x=>x.id===r.id);if(i<0)s.routines.push(r);else s.routines[i]=r;}))return;
     } else {
       const a=validateCheckin({key:`${form.dataset.date}:${form.dataset.routine}`,routineId:form.dataset.routine,date:form.dataset.date,title:form.dataset.title,answer:fd.get('answer'),bedtime:fd.get('bedtime'),before:form.dataset.before});
