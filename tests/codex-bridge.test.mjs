@@ -73,3 +73,21 @@ test('과거 날짜 요청과 완료 초안은 선택한 한국 날짜를 유지
  assert.equal(ready.job.status,'ready');assert.equal(ready.job.records[0].date,past);
  assert.throws(()=>validateDraft({...draft(job),date},job));
 });
+
+
+test('새 초안의 내용 묶음 검증과 이전 초안 호환, 이름 변경에도 식별자 유지',()=>{
+ const job={id:'job',date},raw=draft(job),item=raw.records[0];
+ const grouped=group=>validateDraft({...raw,records:[{...item,group}]},job).records[0];
+ assert.equal(grouped(' 글 작성 ').group,'글 작성');
+ assert.equal(grouped('글 작성').id,grouped('콘텐츠 준비').id);
+ assert.equal(grouped('글 작성').id,validateDraft(raw,job).records[0].id);
+ for(const group of [null,{},'x'.repeat(81),'두\n줄','두\t칸'])assert.throws(()=>grouped(group));
+});
+test('요청은 내용 기준의 공통 묶음과 구체적인 행동을 요구한다',async t=>{
+ let message;const {directory,bridge}=await fixture(t,async(id,text)=>{message=text;});
+ const {job}=await bridge.collect(date);
+ const instructions=JSON.parse(await readFile(join(directory,`${job.id}.request.json`)));
+ assert.match(instructions.schema.records[0].group,/공통 묶음/);
+ assert.match(message,/프로젝트가 달라도 같은 목적이면 같은 group/);
+ assert.match(message,/원본 threadId를 유지/);
+});
