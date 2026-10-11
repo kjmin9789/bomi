@@ -33,5 +33,5 @@ img.flower{object-fit:contain;aspect-ratio:1;height:auto}.hero-flower img.flower
 dialog .draft-include{display:flex;align-items:center;gap:8px;min-height:44px;margin:0}
 .draft-include input{width:18px;height:18px}
 
-.heading-actions .secondary{background:var(--primary-tint);color:var(--primary);min-height:48px;padding:14px 21px;border-radius:10px;font-weight:650}
-.heading-actions .secondary:hover{background:color-mix(in srgb,var(--primary) 14%,var(--surface))}
+.heading-actions .secondary{background:#E2E2E5;color:var(--ink);min-height:48px;padding:14px 21px;border-radius:10px;font-weight:650}
+.heading-actions .secondary:hover{background:#D5D5D9}
