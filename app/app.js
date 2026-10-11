@@ -62,7 +62,7 @@ function groupTags(items) {
 }
 function recordsList(records) {
   if(!records.length) return `<div class="empty"><span>아직 기록이 없어요.</span><p>이미 한 일이 있다면 한 줄만 적어보세요.</p></div>`;
-  return sortedWorkGroups(records).map(([name,items])=>`<section class="work-group"><button class="work-group-open" data-action="group" data-id="${esc(items[0].id)}" aria-label="${esc(name||'해낸 일')} ${items.length}개 · 묶음 내역 보기"><span class="work-group-heading"><strong class="work-group-title">${esc(name||'해낸 일')} <span class="count">${items.length}</span></strong>${groupTags(items)}</span><span class="record group-preview"><span class="record-body"><strong class="record-title">${esc(items[0].summary||items[0].text)}</strong></span><span class="quiet" aria-hidden="true">›</span></span></button></section>`).join('');
+  return sortedWorkGroups(records).map(([name,items])=>`<section class="work-group"><button class="work-group-open" data-action="group" data-id="${esc(items[0].id)}" aria-label="${esc(name||'해낸 일')} ${items.length}개 · 묶음 내역 보기"><span class="work-group-heading">${groupTags(items)}<strong class="work-group-title">${esc(name||'해낸 일')}</strong><span class="count">${items.length}</span><svg class="group-chevron" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M7.86337 3.36272C7.51189 3.7142 7.51189 4.28405 7.86337 4.63552L15.227 11.9991L7.86337 19.3627C7.51189 19.7142 7.51189 20.284 7.86337 20.6355C8.21484 20.987 8.78469 20.987 9.13616 20.6355L17.1362 12.6355C17.4876 12.284 17.4876 11.7142 17.1362 11.3627L9.13616 3.36272C8.78469 3.01125 8.21484 3.01125 7.86337 3.36272Z" fill="currentColor"/></svg></span></button></section>`).join('');
 }
 function groupItems(id) {
   const record=data().records.find(r=>r.id===id);if(!record)return [];

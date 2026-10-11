@@ -51,3 +51,6 @@ Record actions use the original Wanted Montage IconTrash SVG paths under the MIT
 The inline group title editor uses Wanted Montage IconPencil under the same MIT license.
 
 - https://github.com/wanteddev/montage-web/blob/main/packages/icon/src/icon-pencil.tsx
+
+Group navigation uses Wanted Montage IconChevronRight (MIT):
+https://github.com/wanteddev/montage-web/blob/main/packages/icon/src/icon-chevron-right.tsx

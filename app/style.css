@@ -67,3 +67,11 @@ dialog > .group-tags{justify-content:flex-start;margin:0 0 12px}.record-mark svg
 
 .record-form-actions>button{flex:1}
 #save-record:disabled{opacity:.4;cursor:not-allowed}
+
+.work-group:has(>.work-group-open)+.work-group{margin-top:10px}
+.work-group-open{padding:16px;background:color-mix(in srgb,var(--canvas) 65%,var(--surface))}
+.work-group-open .work-group-heading{align-items:center;gap:10px;margin:0}
+.work-group-open .group-tags{justify-content:flex-start;flex-shrink:0;max-width:100px}
+.work-group-open .work-group-title{min-width:0;font-size:16px}
+.work-group-open .count,.group-chevron{flex-shrink:0}
+.group-chevron{color:var(--muted)}
