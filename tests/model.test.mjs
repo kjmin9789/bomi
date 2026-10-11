@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {groupRecords,activeThemes,flowerStage,validateRecord,validateState,emptyState,weekStart,shiftDate,weekSummary,validDate} from '../app/model.js';
+import {newestRecords,groupRecords,activeThemes,flowerStage,validateRecord,validateState,emptyState,weekStart,shiftDate,weekSummary,validDate} from '../app/model.js';
 const record=(id,date='2026-10-10',themes=['career'])=>({id,date,text:'원고 준비',result:'임시저장 원고',themes,saved:false});
 test('테마 중복 기록은 실천 테마 수를 바꾸지 않는다',()=>{
   const once=activeThemes([record('1')],'2026-10-10');
@@ -83,4 +83,11 @@ test('짧은 제목은 상세와 별도로 검증하고 백업 왕복에도 보�
   assert.equal(restored.text,entry.text);
   assert.equal(validateRecord({...entry,summary:''}).summary,undefined);
   for(const summary of [42,'x'.repeat(81),'첫 줄\n다음 줄'])assert.throws(()=>validateRecord({...entry,summary}));
+});
+
+test('묶음 미리보기는 날짜와 같은 날짜의 저장 순서로 최신 기록을 선택한다',()=>{
+ const records=[record('old','2026-10-09'),record('first'),record('last')];
+ assert.deepEqual(newestRecords(records).map(r=>r.id),['last','first','old']);
+ assert.deepEqual(records.map(r=>r.id),['old','first','last']);
+ assert.deepEqual(newestRecords([]),[]);
 });
