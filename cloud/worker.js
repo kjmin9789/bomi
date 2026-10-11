@@ -119,6 +119,8 @@ export async function handleRequest(request, env, resolver) {
       const response = await env.ASSETS.fetch(request);
       const secured = new Response(response.body, response);
       for (const [key,value] of Object.entries(headers)) secured.headers.set(key,value);
+      // These bundled assets contain no user data; API and document responses stay no-store.
+      if(response.status===200&&/^\/assets\/(?:flower-stage-[0-3]\.png|bomi-logo\.png|OwnglyphCorncorn\.ttf)$/.test(url.pathname))secured.headers.set('Cache-Control','private, max-age=86400');
       return secured;
     }
     const owner = await authenticate(request, env, resolver);

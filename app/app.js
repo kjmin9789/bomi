@@ -284,3 +284,7 @@ async function cloudAction(kind) {
     }
   }catch(error){toast(error.message);}
 }
+
+// Decode each unchanged original once before a later completion dialog needs it.
+const flowerImages=[];
+setTimeout(()=>{for(let stage=0;stage<4;stage++){const img=new Image();img.fetchPriority='low';img.src=`/assets/flower-stage-${stage}.png`;img.decode().catch(()=>{});flowerImages.push(img);}},1000);
