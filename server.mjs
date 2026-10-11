@@ -5,6 +5,7 @@ const allowed = new Map([
   ['/style.css', ['style.css', 'text/css']], ['/app.js', ['app.js', 'text/javascript']],
   ['/model.js', ['model.js', 'text/javascript']], ['/icon.svg', ['icon.svg', 'image/svg+xml']],
   ['/assets/OwnglyphCorncorn.ttf', ['assets/OwnglyphCorncorn.ttf', 'font/ttf']],
+  ['/assets/bomi-logo.png', ['assets/bomi-logo.png', 'image/png']],
   ['/manifest.webmanifest', ['manifest.webmanifest', 'application/manifest+json']]
 ]);
 for (let stage=0;stage<=3;stage++) allowed.set(`/assets/flower-stage-${stage}.png`,[`assets/flower-stage-${stage}.png`,'image/png']);
