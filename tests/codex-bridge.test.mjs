@@ -8,7 +8,10 @@ import {createBridge,validateDraft} from '../codex-bridge.mjs';
 import {createAppServer} from '../server.mjs';
 const threadId='00000000-0000-0000-0000-000000000001';
 const date='2026-10-10';
-const draft=job=>({requestId:job.id,date:job.date,note:'',records:[{threadId,taskKey:'turn1-note',title:'테스트 작업',text:'노트를 정리했어요',result:'참고 노트',themes:['career'],evidence:'해당 날짜의 완료 턴에서 노트 저장 확인'}]});
+const legacyDraft=job=>({requestId:job.id,date:job.date,note:'',records:[{threadId,taskKey:'turn1-note',title:'테스트 작업',text:'노트를 정리했어요',result:'참고 노트',themes:['career'],evidence:'해당 날짜의 완료 턴에서 노트 저장 확인'}]});
+const draft=job=>{const raw=legacyDraft(job);if(job.schemaVersion!==3)return raw;const {themes,...item}=raw.records[0];return {requestId:raw.requestId,date:raw.date,note:raw.note,groups:[{groupKey:'notes',title:'노트 정리',themes,items:[item]}]};};
+const draftRecords=job=>job.records||job.groups.flatMap(g=>g.items.map(r=>({...r,date:job.date})));
+
 async function fixture(t,send){const directory=await mkdtemp(join(tmpdir(),'bomi-bridge-'));t.after(()=>rm(directory,{recursive:true,force:true}));return {directory,bridge:createBridge({directory,send})};}
 test('자료 먼저 저장, 중복 전달 차단, 결과 도착 후에만 ready',async t=>{
  let calls=0;let dir;
@@ -16,11 +19,11 @@ test('자료 먼저 저장, 중복 전달 차단, 결과 도착 후에만 ready'
  const first=await bridge.collect(date);assert.equal(first.job.status,'awaiting-send');assert.equal(first.job.records,undefined);
  await bridge.collect(date);assert.equal(calls,1);
  await writeFile(join(directory,`${first.job.id}.result.json`),JSON.stringify(draft(first.job)));
- const ready=await bridge.status();assert.equal(ready.job.status,'ready');assert.equal(ready.job.records.length,1);
+ const ready=await bridge.status();assert.equal(ready.job.status,'ready');assert.equal(draftRecords(ready.job).length,1);
  await assert.rejects(()=>bridge.close('another-request'));
  await bridge.close(first.job.id);assert.equal((await bridge.status()).job,null);
  const next=await bridge.collect(date);assert.equal(calls,2);assert.notEqual(next.job.id,first.job.id);
- assert.equal(validateDraft(draft(next.job),next.job).records[0].id,ready.job.records[0].id);
+ assert.equal(draftRecords(validateDraft(draft(next.job),next.job))[0].id,draftRecords(ready.job)[0].id);
 });
 test('불명확한 전달은 재시도하지 않고, 잘못된 결과는 기록 후보로 전달하지 않음',async t=>{
  let calls=0;const {directory,bridge}=await fixture(t,async()=>{calls++;throw new Error('private diagnostic must not escape');});
@@ -70,7 +73,7 @@ test('과거 날짜 요청과 완료 초안은 선택한 한국 날짜를 유지
  assert.equal(request.date,past);assert.equal(request.timezone,'Asia/Seoul');
  await writeFile(join(directory,`${job.id}.result.json`),JSON.stringify(draft(job)));
  const ready=await bridge.status();
- assert.equal(ready.job.status,'ready');assert.equal(ready.job.records[0].date,past);
+ assert.equal(ready.job.status,'ready');assert.equal(draftRecords(ready.job)[0].date,past);
  assert.throws(()=>validateDraft({...draft(job),date},job));
 });
 
@@ -103,8 +106,8 @@ test('요청은 내용 기준의 공통 묶음과 구체적인 행동을 요구�
  let message;const {directory,bridge}=await fixture(t,async(url)=>{message=new URL(url).searchParams.get('prompt');});
  const {job}=await bridge.collect(date);
  const instructions=JSON.parse(await readFile(join(directory,`${job.id}.request.json`)));
- assert.match(instructions.schema.records[0].group,/공통 묶음/);
- assert.match(message,/프로젝트가 달라도 같은 목적이면 같은 group/);
+ assert.match(instructions.schema.groups[0].title,/공통 묶음/);
+ assert.match(message,/프로젝트가 달라도 같은 목적이면 같은 묶음/);
  assert.match(message,/원본 threadId와 안정적인 taskKey/);
 });
 
@@ -125,7 +128,7 @@ test('자동 전송 결과를 검증 후 ready로 수신하고 종료한 요청�
  const queued=await bridge.collect(date);assert.equal(queued.job.status,'queued');assert.equal(queued.job.threadId,threadId);
  finish(draft(queued.job));
  let ready;for(let i=0;i<100;i++){ready=await bridge.status();if(ready.job.status==='ready')break;await new Promise(r=>setTimeout(r,5));}
- assert.equal(ready.job.status,'ready');assert.equal(ready.job.records.length,1);
+ assert.equal(ready.job.status,'ready');assert.equal(draftRecords(ready.job).length,1);
  await bridge.close(ready.job.id);
  const next=await bridge.collect(date);await bridge.close(next.job.id);rejectRun(new Error('private'));
  await new Promise(r=>setTimeout(r,20));assert.equal((await bridge.status()).job,null);
@@ -137,4 +140,15 @@ test('가져온 한 줄 요약은 상세를 보존하며 길이와 형식을 검
  const entry=validateDraft(raw,job).records[0];
  assert.equal(entry.summary,'노트를 정리했다');assert.equal(entry.text,raw.records[0].text);
  for(const summary of [42,'x'.repeat(81),'첫 줄\n둘째 줄']){raw.records[0].summary=summary;assert.throws(()=>validateDraft(raw,job));}
+});
+
+test('묶음 초안은 테마를 한 번만 전달하고 재수집에도 작업과 묶음 ID를 유지한다',()=>{
+ const job={id:'grouped',date,schemaVersion:3},raw=draft(job),a=validateDraft(raw,job);
+ const changed=structuredClone(raw);changed.groups[0].title='이름 수정';changed.groups[0].themes=['health'];
+ const b=validateDraft(changed,job);
+ assert.equal(a.groups[0].id,b.groups[0].id);assert.equal(a.groups[0].items[0].id,b.groups[0].items[0].id);
+ assert.equal('themes' in a.groups[0].items[0],false);assert.equal('records' in a,false);
+ for(const patch of [{themes:['health','career']},{groupKey:''},{items:[]}])assert.throws(()=>validateDraft({...raw,groups:[{...raw.groups[0],...patch}]},job));
+ assert.throws(()=>validateDraft({...raw,groups:[raw.groups[0],raw.groups[0]]},job));
+ const duplicate={...raw.groups[0],groupKey:'another'};assert.throws(()=>validateDraft({...raw,groups:[raw.groups[0],duplicate]},job));
 });

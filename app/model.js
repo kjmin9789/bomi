@@ -37,11 +37,11 @@ export function flowerStage(active) {
 export function groupRecords(records) {
   const groups=new Map();
   for(const record of records) {
-    const name=record.group?.trim()||'';
-    if(!groups.has(name))groups.set(name,[]);
-    groups.get(name).push(record);
+    const key=record.groupId||`${record.date||''}:${record.group?.trim()||''}`;
+    if(!groups.has(key))groups.set(key,[]);
+    groups.get(key).push(record);
   }
-  return [...groups];
+  return [...groups.values()].map(items=>[items[0].group?.trim()||'',items]);
 }
 // Same-day records have no completion timestamp; use their saved insertion order.
 export function newestRecords(records) {
@@ -61,10 +61,59 @@ export function validateRecord(record, maxDate=today(), allowLegacy=false) {
   if(record.summary!==undefined && (typeof record.summary!=='string'||record.summary.length>80||/[\u0000-\u001f]/.test(record.summary)))throw new Error('목록의 한 줄은 80자까지 적어주세요.');
   return {...(record.summary?.trim()?{summary:record.summary.trim()}:{}),...(record.group?.trim()?{group:record.group.trim()}:{}),id:record.id,date:record.date,text:record.text.trim(),result:record.result.trim(),themes:[...record.themes], saved:record.saved===true};
 }
-export const emptyState = () => ({version:1,records:[],futures:{},reviews:{},rest:[],reminder:'',snoozed:{},routines:[],checkins:[],onboarded:false});
+export function projectRecords(state) {
+  const groups=new Map((state.groups||[]).map(g=>[g.id,g]));
+  return state.records.map(r=>{
+    if(!r.groupId)return r;
+    const g=groups.get(r.groupId);
+    if(!g)throw new Error('기록의 묶음을 찾지 못했어요.');
+    return {...r,date:g.date,group:g.title,themes:g.themes,result:r.result||'',saved:r.saved===true};
+  });
+}
+function validateGroup(g) {
+  if(!g||typeof g.id!=='string'||!g.id||g.id.length>240||!validDate(g.date)||g.date>today()||typeof g.title!=='string'||g.title.length>80||/[\u0000-\u001f]/.test(g.title)||!Array.isArray(g.themes)||!g.themes.length||g.themes.length>ALL_THEMES.length||new Set(g.themes).size!==g.themes.length||g.themes.some(id=>!ALL_THEMES.some(t=>t.id===id)))throw new Error('묶음의 제목·날짜·테마를 확인해주세요.');
+  return {id:g.id,date:g.date,title:g.title.trim(),themes:[...g.themes]};
+}
+function compactRecord(r,groupId) {
+  return {id:r.id,groupId,text:r.text,...(r.summary?{summary:r.summary}:{}),...(r.result?{result:r.result}:{}),...(r.saved?{saved:true}:{})};
+}
+function normalizeWork(data) {
+  if(data.groups!==undefined&&(!Array.isArray(data.groups)||data.groups.length>20000))throw new Error('묶음 데이터를 확인해주세요.');
+  const groups=(data.groups||[]).map(validateGroup),byId=new Map(groups.map(g=>[g.id,g]));
+  if(byId.size!==groups.length)throw new Error('중복된 묶음 식별자가 있어요.');
+  const legacy=new Map();
+  const records=data.records.map(raw=>{
+    if(raw.groupId!==undefined){
+      const g=byId.get(raw.groupId);if(!g)throw new Error('기록의 묶음을 찾지 못했어요.');
+      return compactRecord(validateRecord({...raw,date:g.date,group:g.title,themes:g.themes,result:raw.result??''},today(),true),g.id);
+    }
+    const r=validateRecord(raw,today(),true),key=JSON.stringify([r.date,r.group||'',[...r.themes].sort()]);
+    if(!legacy.has(key)){
+      const g=validateGroup({id:`legacy:${r.id}`,date:r.date,title:r.group||'',themes:r.themes});
+      if(byId.has(g.id))throw new Error('묶음 식별자가 충돌했어요.');
+      groups.push(g);byId.set(g.id,g);legacy.set(key,g);
+    }
+    return compactRecord(r,legacy.get(key).id);
+  });
+  const used=new Set(records.map(r=>r.groupId));
+  return {groups:groups.filter(g=>used.has(g.id)),records};
+}
+export function putRecord(state,input,groupId) {
+  const r=validateRecord(input,today(),true),old=state.records.find(item=>item.id===r.id);
+  const id=groupId||old?.groupId||`record:${r.id}`;
+  let group=state.groups.find(g=>g.id===id);
+  if(!group){group={id,date:r.date,title:r.group||'',themes:[...r.themes]};state.groups.push(group);}
+  const item=compactRecord(r,id),i=state.records.findIndex(item=>item.id===r.id);
+  if(i<0)state.records.push(item);else state.records[i]=item;
+}
+export function patchGroup(state,id,values) {
+  const group=state.groups.find(g=>g.id===id);if(!group)throw new Error('묶음이 변경됐어요. 다시 열어주세요.');
+  Object.assign(group,validateGroup({...group,...values}));
+}
+export const emptyState = () => ({version:2,groups:[],records:[],futures:{},reviews:{},rest:[],reminder:'',snoozed:{},routines:[],checkins:[]});
 export function validateState(data) {
-  if (!data || data.version!==1 || !Array.isArray(data.records) || data.records.length>20000) throw new Error('지원하는 보미 백업 파일이 아니에요.');
-  const next = emptyState(); next.records=data.records.map(r=>validateRecord(r,today(),true));
+  if (!data || ![1,2].includes(data.version) || !Array.isArray(data.records) || data.records.length>20000) throw new Error('지원하는 보미 백업 파일이 아니에요.');
+  const next = emptyState(); Object.assign(next,normalizeWork(data));
   if (new Set(next.records.map(r=>r.id)).size!==next.records.length) throw new Error('중복된 기록 식별자가 있어요.');
   for (const theme of ALL_THEMES) {
     const value=data.futures?.[theme.id];
@@ -77,7 +126,7 @@ export function validateState(data) {
     next.reviews[date]={mood:review.mood,note:review.note};
   }
   if (data.reminder && !/^([01]\d|2[0-3]):[0-5]\d$/.test(data.reminder)) throw new Error('알림 시각을 확인해주세요.');
-  next.reminder=data.reminder||''; next.onboarded=data.onboarded===true;
+  next.reminder=data.reminder||'';
   for(const [date,value] of Object.entries(data.snoozed||{})) if(validDate(date)&&Number.isFinite(value)) next.snoozed[date]=value;
   if(!Array.isArray(data.routines??[]) || (data.routines??[]).length>100 || !Array.isArray(data.checkins??[]) || (data.checkins??[]).length>20000) throw new Error('반복 질문 데이터를 확인해주세요.');
   next.routines=(data.routines??[]).map(validateRoutine);
@@ -90,13 +139,13 @@ export function weekSummary(records, start) {
   return {entries, days:new Set(entries.map(r=>r.date)).size, themes:THEMES.map(t=>({...t, days:new Set(entries.filter(r=>r.themes.includes(t.id)).map(r=>r.date)).size}))};
 }
 export function demoState() {
-  const state=emptyState(); state.onboarded=true;
+  const state=emptyState();
   THEMES.forEach(t=>state.futures[t.id]=t.future);
   const examples=[['이번 주 지출을 정리했어','지출 내역을 확인했어요.',['money']],['업무 노트를 정리했어','다음에 참고할 메모가 남았어요.',['career']],['산책을 다녀왔어','몸을 움직이는 시간을 보냈어요.',['health']]];
   for(let day=0;day<Math.min(21,Number(today().slice(-2)));day++) {
     for(let j=0;j<(day===0?2:1+(day%3));j++) { const [text,result,themes]=examples[(day+j)%examples.length]; state.records.push({id:`demo-${day}-${j}`,date:shiftDate(today(),-day),text,result,themes,saved:false}); }
   }
-  return state;
+  return validateState(state);
 }
 
 export const validTime = value => typeof value==='string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
@@ -151,5 +200,5 @@ export function saveRoutineAnswer(state,input,themes) {
   const i=state.checkins.findIndex(a=>a.key===answer.key);
   if(i<0)state.checkins.push(answer);else state.checkins[i]=answer;
   state.records=state.records.filter(r=>r.id!==recordId);
-  if(record){state.records.push(record);routine.themes=[...record.themes];}
+  if(record){putRecord(state,record,`routine:${routine.id}:${record.date}`);patchGroup(state,`routine:${routine.id}:${record.date}`,{themes:record.themes});routine.themes=[...record.themes];}
 }
