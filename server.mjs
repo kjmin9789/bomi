@@ -4,7 +4,7 @@ const allowed = new Map([
   ['/', ['index.html', 'text/html']], ['/index.html', ['index.html', 'text/html']],
   ['/style.css', ['style.css', 'text/css']], ['/app.js', ['app.js', 'text/javascript']],
   ['/model.js', ['model.js', 'text/javascript']], ['/icon.svg', ['icon.svg', 'image/svg+xml']],
-  ['/assets/GmarketSansTTFBold.ttf', ['assets/GmarketSansTTFBold.ttf', 'font/ttf']],
+  ['/assets/OwnglyphCorncorn.ttf', ['assets/OwnglyphCorncorn.ttf', 'font/ttf']],
   ['/assets/bomi-logo.png', ['assets/bomi-logo.png', 'image/png']],
   ['/manifest.webmanifest', ['manifest.webmanifest', 'application/manifest+json']]
 ]);

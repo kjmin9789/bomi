@@ -21,6 +21,6 @@
 !/tests/
 /tests/*
 !/tests/model.test.mjs
-!/app/assets/GmarketSansTTFBold.ttf
-!/app/assets/GmarketSans-LICENSE.txt
+!/app/assets/OwnglyphCorncorn.ttf
+!/app/assets/OwnglyphCorncorn-LICENSE.txt
 !/app/assets/bomi-logo.png
