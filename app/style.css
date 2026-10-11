@@ -60,10 +60,10 @@ dialog > .group-tags{justify-content:flex-start;margin:0 0 12px}.record-mark svg
 #group-theme.theme-picker span{padding-left:17px}
 
 .group-title-line [hidden]{display:none!important}
-#group-title-editor{position:relative;flex:1;min-width:0;margin:8px 0 12px}
-#group-title-editor input{padding-right:70px;font-size:20px}
-#group-title-save{position:absolute;right:8px;top:50%;transform:translateY(-50%);padding:8px 12px;font-size:14px;font-weight:650;color:var(--primary);border-radius:6px}
-#group-title-save:hover{background:var(--primary-tint)}
+#group-title-editor{display:flex;align-items:stretch;gap:8px;flex:1;min-width:0;margin:8px 0 12px}
+#group-title-editor input{flex:1;min-width:0;width:0;padding:12px;font-size:20px}
+#group-title-save{align-self:stretch;flex-shrink:0;padding:12px 21px;color:var(--on-primary)}
+#group-title-save:hover{background:var(--primary-hover)}
 
 .record-form-actions>button{flex:1}
 #save-record:disabled{opacity:.4;cursor:not-allowed}
