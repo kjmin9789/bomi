@@ -1,0 +1,17 @@
+온글잎 콘콘체 (Ownglyph Corncorn)
+Original, unmodified TTF downloaded from the official font page.
+Font: https://www.ownglyph.com/trial/c9d001d1-c8ac-4e41-95fd-b4e7383160aa
+License: https://www.ownglyph.com/font (온글잎 폰트 라이선스)
+Checked: 2026-10-11
+
+저작재산권은 (주)보이저엑스와 해당 손글씨 제공자에게 있습니다.
+해당 폰트를 사용한 인쇄물, 광고물(온라인 포함)의 이미지는
+온글잎(또는 (주)보이저엑스) 프로모션을 위해 활용될 수 있습니다.
+
+공식 라이선스 표:
+문서작성 / E-Learning / E-Book / 인쇄물 / UI / 영상 / 포장지: O
+임베딩 (HW 내 탑재, SW 내 탑재, 웹폰트 등 웹서버 탑재): O
+CI/BI: O
+폰트 수정: X
+폰트 배포: O
+폰트 판매: X
