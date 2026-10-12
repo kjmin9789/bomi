@@ -62,3 +62,7 @@ Routine navigation uses the original Wanted Montage IconClock SVG paths under th
 Routine notification switches adapt Wanted Montage medium Switch dimensions and motion under the MIT license above, with Bomi color tokens and a 48px touch target.
 
 - https://github.com/wanteddev/montage-web/blob/main/packages/core/src/components/switch/style.ts
+
+The Codex notice dismiss button uses the original Wanted Montage IconClose SVG path under the MIT license above.
+
+- https://github.com/wanteddev/montage-web/blob/main/packages/icon/src/icon-close.tsx

@@ -81,3 +81,19 @@ test('묶음 테마 변경과 다른 기기의 개별 내용 변경을 함께 �
  assert.equal('themes' in merged.records[0],false);assert.deepEqual(projectRecords(merged)[0].themes,['health']);
  patchGroup(remote,'g',{themes:['money']});assert.throws(()=>mergeStates(base,local,remote),/다른 기기/);
 });
+
+test('휴대폰과 데스크톱 모드 iPad에서 Codex 요청을 보내지 않는다',async t=>{
+ const {isMobileDevice}=await import('../app/cloud.js');
+ const devices=[{userAgent:'Mozilla iPhone'},{userAgent:'Mozilla Android'},{userAgent:'Mozilla Macintosh',platform:'MacIntel',maxTouchPoints:5},{userAgentData:{mobile:true}}];
+ let requests=0;t.mock.method(globalThis,'fetch',async()=>{requests++;return Response.json({});});
+ for(const device of devices){
+  assert.equal(isMobileDevice(device),true);
+  const original=Object.getOwnPropertyDescriptor(globalThis,'navigator');
+  Object.defineProperty(globalThis,'navigator',{configurable:true,value:device});
+  try{await assert.rejects(codexRequest('status'));await assert.rejects(codexRequest('collect',{},true));}
+  finally{if(original)Object.defineProperty(globalThis,'navigator',original);else delete globalThis.navigator;}
+ }
+ assert.equal(requests,0);
+ assert.equal(isMobileDevice({userAgent:'Mozilla Macintosh',platform:'MacIntel',maxTouchPoints:0}),false);
+ assert.equal(isMobileDevice({userAgent:'Mozilla Windows NT'}),false);
+});

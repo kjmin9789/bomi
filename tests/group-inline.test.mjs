@@ -109,3 +109,16 @@ test('정각이 되면 없던 질문 카드도 꽃 앞에 삽입한다',()=>{
   vm.runInContext('routineCheck()',context);
   assert.equal(inserted.position,'afterbegin');assert.match(inserted.html,/checkins/);
 });
+
+test('Codex 안내 닫기는 자동 확인과 늦은 응답을 막고 선택한 재연결로 재개한다',async()=>{
+ let resolve,calls=0;const notice={innerHTML:''},saved={};
+ const context=vm.createContext({mobileDevice:false,demo:false,document:{hidden:false,querySelector:()=>notice},dialog:{open:false},localStorage:{getItem:()=> '1',setItem:(k,v)=>saved[k]=v},codexApi:()=>{calls++;return new Promise(r=>resolve=r);},esc:String,fmt:String,closeIcon:'<svg></svg>'});
+ vm.runInContext(source.slice(source.indexOf('let codexWatch=false;'),source.indexOf('setInterval(refreshCodexNotice')),context);
+ const pending=context.refreshCodexNotice();context.dismissCodexNotice();resolve({job:{date:'2026-10-12',status:'queued'}});await pending;
+ assert.equal(notice.innerHTML,'');assert.equal(saved['bomi.codex.watch'],'0');
+ await context.refreshCodexNotice();assert.equal(calls,1);
+ vm.runInContext('codexWatch=true',context);
+ const resumed=context.refreshCodexNotice();resolve({job:{date:'2026-10-12',status:'ready',records:[]}});await resumed;
+ assert.match(notice.innerHTML,/Codex 연결 안내 닫기/);assert.match(notice.innerHTML,/정리 결과 확인/);
+ context.mobileDevice=true;await context.refreshCodexNotice();assert.equal(calls,2);
+});
