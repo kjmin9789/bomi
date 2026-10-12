@@ -110,6 +110,26 @@ export function patchGroup(state,id,values) {
   const group=state.groups.find(g=>g.id===id);if(!group)throw new Error('묶음이 변경됐어요. 다시 열어주세요.');
   Object.assign(group,validateGroup({...group,...values}));
 }
+export function mergeGroups(state,ids,title) {
+  if(!Array.isArray(ids)||new Set(ids).size!==ids.length||ids.length<2)throw new Error('합칠 묶음을 두 개 이상 골라주세요.');
+  const groups=ids.map(id=>state.groups.find(g=>g.id===id));
+  if(groups.some(g=>!g)||groups.some(g=>g.date!==groups[0].date))throw new Error('같은 날짜의 묶음만 합칠 수 있어요. 다시 선택해주세요.');
+  const target=validateGroup({...groups[0],title,themes:[...new Set(groups.flatMap(g=>g.themes))]});
+  if(!target.title)throw new Error('합친 묶음의 이름을 적어주세요.');
+  const chosen=new Set(ids);
+  state.groups=state.groups.filter(g=>!chosen.has(g.id)||g.id===target.id).map(g=>g.id===target.id?target:g);
+  state.records=state.records.map(r=>chosen.has(r.groupId)?{...r,groupId:target.id}:r);
+}
+export function splitGroup(state,id,recordIds,title,newId) {
+  const group=state.groups.find(g=>g.id===id),items=state.records.filter(r=>r.groupId===id);
+  if(!group||!Array.isArray(recordIds)||!recordIds.length||new Set(recordIds).size!==recordIds.length||recordIds.length>=items.length||recordIds.some(id=>!items.some(r=>r.id===id)))throw new Error('분리할 기록을 골라주세요. 원래 묶음에도 하나 이상 남겨주세요.');
+  if(state.groups.some(g=>g.id===newId))throw new Error('묶음 식별자가 중복돼요. 다시 시도해주세요.');
+  const created=validateGroup({...group,id:newId,title});
+  if(!created.title)throw new Error('새 묶음의 이름을 적어주세요.');
+  state.groups.push(created);
+  const chosen=new Set(recordIds);
+  state.records=state.records.map(r=>chosen.has(r.id)?{...r,groupId:newId}:r);
+}
 export const emptyState = () => ({version:2,groups:[],records:[],futures:{},reviews:{},rest:[],reminder:'',snoozed:{},routines:[],checkins:[]});
 export function validateState(data) {
   if (!data || ![1,2].includes(data.version) || !Array.isArray(data.records) || data.records.length>20000) throw new Error('지원하는 보미 백업 파일이 아니에요.');

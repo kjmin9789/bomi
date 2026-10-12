@@ -210,3 +210,26 @@ test('같은 제목의 독립 묶음과 제목 변경은 ID를 유지하고 개�
  assert.deepEqual(projectRecords(s)[0].themes,['health']);assert.equal(groupRecords(projectRecords(s)).length,2);
  s.records=s.records.filter(r=>r.groupId!=='g1');assert.deepEqual(validateState(s).groups.map(g=>g.id),['g2']);
 });
+
+test('묶음 합치기와 분리는 기록 내용·식별자·보관 및 꽃 단계를 보존한다',async()=>{
+ const {putRecord,mergeGroups,splitGroup}=await import('../app/model.js');const s=emptyState();
+ putRecord(s,{...record('a'),summary:'요약',saved:true},'g1');
+ putRecord(s,record('b'),'g1');putRecord(s,record('c','2026-10-10',['health']),'g2');
+ const original=s.records.map(({groupId,...r})=>r),flags=activeThemes(projectRecords(s),'2026-10-10');
+ mergeGroups(s,['g1','g2'],'하나의 묶음');
+ assert.equal(s.groups.length,1);assert.deepEqual(s.groups[0].themes,['career','health']);
+ splitGroup(s,'g1',['a'],'분리한 묶음','new');
+ assert.equal(s.groups.length,2);assert.equal(s.records[0].groupId,'new');
+ assert.deepEqual(s.records.map(({groupId,...r})=>r),original);
+ assert.deepEqual(activeThemes(projectRecords(s),'2026-10-10'),flags);
+ assert.deepEqual(validateState(JSON.parse(JSON.stringify(s))),s);
+});
+test('잘못된 합치기·분리는 변경 없이 거절하고 같은 제목도 독립 묶음으로 둔다',async()=>{
+ const {putRecord,mergeGroups,splitGroup}=await import('../app/model.js');const s=emptyState();
+ putRecord(s,record('a'),'g1');putRecord(s,record('b'),'g1');putRecord(s,record('c','2026-10-09'),'g2');
+ for(const run of [()=>mergeGroups(s,['g1'],'제목'),()=>mergeGroups(s,['g1','g2'],'제목'),()=>mergeGroups(s,['g1','missing'],'제목'),()=>splitGroup(s,'g1',[],'제목','new'),()=>splitGroup(s,'g1',['a','b'],'제목','new'),()=>splitGroup(s,'g1',['c'],'제목','new'),()=>splitGroup(s,'g1',['a'],'제목','g2'),()=>splitGroup(s,'g1',['a'],'','new')]){
+  const before=structuredClone(s);assert.throws(run);assert.deepEqual(s,before);
+ }
+ splitGroup(s,'g1',['a'],'동일','new');s.groups.find(g=>g.id==='g1').title='동일';
+ assert.equal(groupRecords(projectRecords(validateState(s))).length,3);
+});

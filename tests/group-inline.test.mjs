@@ -109,3 +109,25 @@ test('정각이 되면 없던 질문 카드도 꽃 앞에 삽입한다',()=>{
   vm.runInContext('routineCheck()',context);
   assert.equal(inserted.position,'afterbegin');assert.match(inserted.html,/checkins/);
 });
+
+test('묶음 안에서 추가하면 묶음 날짜·테마·식별자를 그대로 전달한다',async()=>{
+ let submit,reviewed,target;
+ const group={id:'g',date:'2026-10-09',title:'운동',themes:['health']};
+ const context=vm.createContext({document:{addEventListener:(_,handler)=>submit=handler},FormData:class {get(key){return {text:'걷기',summary:'산책했다',group:'다른 묶음'}[key]}getAll(){return ['career']}},data:()=>({records:[],groups:[group]}),crypto:{randomUUID:()=> 'new'},selected:'2026-10-10',today:()=> '2026-10-12',validateRecord:r=>r,saveRecord:(r,g)=>{reviewed=r;target=g;}});
+ const start=source.indexOf("document.addEventListener('submit',");
+ vm.runInContext(source.slice(start,source.indexOf("document.addEventListener('change',",start)),context);
+ await submit({preventDefault(){},target:{id:'record-form',dataset:{id:'',groupId:'g'},querySelector:()=>null}});
+ assert.equal(target,'g');assert.equal(reviewed.date,group.date);assert.equal(reviewed.group,group.title);assert.deepEqual(reviewed.themes,group.themes);
+});
+
+test('Codex 재가져오기는 직접 합치거나 분리한 묶음을 되돌리지 않는다',async()=>{
+ const {emptyState,putRecord,mergeGroups,splitGroup,validateState}=await import('../app/model.js');
+ const state=emptyState(),base={date:'2026-10-10',text:'원문',result:'',themes:['career']};
+ putRecord(state,{...base,id:'a',group:'원본 A'},'import-a');putRecord(state,{...base,id:'b',group:'원본 B'},'import-b');putRecord(state,{...base,id:'c',group:'원본 B'},'import-b');
+ mergeGroups(state,['import-a','import-b'],'직접 합침');splitGroup(state,'import-a',['c'],'직접 분리','custom');
+ const groups=structuredClone(state.groups),entries=[{groupId:'import-b',record:{...base,id:'c',text:'새 내용',group:'새 AI 제목',themes:['health']}}];
+ const context=vm.createContext({entries,putRecord,s:state});
+ const start=source.indexOf('for(const {groupId,record} of entries)');
+ vm.runInContext(source.slice(start,source.indexOf('}))return;',start)),context);
+ assert.deepEqual(state.groups,groups);assert.equal(state.records.find(r=>r.id==='c').groupId,'custom');assert.equal(state.records.find(r=>r.id==='c').text,'새 내용');assert.doesNotThrow(()=>validateState(state));
+});
