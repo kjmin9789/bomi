@@ -146,6 +146,7 @@ test('루틴 완료 답변은 한 번만 기록하고 수정·건너뛰기를 �
   const answer={key:`${date}:test-routine`,routineId:'test-routine',date,title:'확인한 행동',answer:'done'};
   saveRoutineAnswer(state,answer,['health']);saveRoutineAnswer(state,answer,['health']);
   assert.equal(state.records.length,1);assert.equal(state.checkins.length,1);
+  assert.equal(state.groups[0].title,'확인한 행동 완료');
   assert.equal(flowerStage(activeThemes(projectRecords(state),date)),1);
   assert.equal(validateState(state).records.length,1);
   saveRoutineAnswer(state,{...answer,answer:'skip'},[]);
@@ -257,4 +258,19 @@ test('묶음 실행 취소는 미래 등 다른 설정을 보존하고 이후 �
  s.futures.career='바뀐 미래';restoreWork(s,before,after);assert.deepEqual(s.groups,before.groups);assert.equal(s.futures.career,'바뀐 미래');
  const changed=structuredClone(after);changed.records[0].text='다른 기기 수정';const preserved=structuredClone(changed);
  assert.throws(()=>restoreWork(changed,before,after));assert.deepEqual(changed,preserved);
+});
+
+
+test('이전 고정 루틴 묶음은 실제 행동을 표시하고 원본과 사용자 제목은 보존한다',()=>{
+  const state=emptyState();
+  state.groups=[{id:'routine:swim:2026-10-10',date:'2026-10-10',title:'고정 루틴',themes:['health']}];
+  state.records=[{id:'routine-2026-10-10:swim',groupId:state.groups[0].id,text:'수영 완료'}];
+  const before=JSON.stringify(state);
+  assert.equal(projectRecords(state)[0].group,'수영 완료');
+  assert.equal(JSON.stringify(state),before);
+  state.groups[0].title='나의 운동';
+  assert.equal(projectRecords(state)[0].group,'나의 운동');
+  state.groups[0].title='고정 루틴';
+  state.records.push({id:'manual',groupId:state.groups[0].id,text:'직접 추가한 일'});
+  assert.equal(projectRecords(state)[0].group,'고정 루틴');
 });

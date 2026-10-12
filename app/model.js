@@ -63,6 +63,15 @@ export function validateRecord(record, maxDate=today(), allowLegacy=false) {
 }
 export function projectRecords(state) {
   const groups=new Map((state.groups||[]).map(g=>[g.id,g]));
+  const routineItems=new Map();
+  for(const r of state.records) {
+    if(groups.get(r.groupId)?.title!=='고정 루틴')continue;
+    if(!routineItems.has(r.groupId))routineItems.set(r.groupId,[]);
+    routineItems.get(r.groupId).push(r);
+  }
+  for(const [id,items] of routineItems) {
+    if(items.every(r=>r.id.startsWith('routine-')))groups.set(id,{...groups.get(id),title:items.map(r=>r.text).join(' · ').replace(/[\u0000-\u001f]/g,' ').slice(0,80)});
+  }
   return state.records.map(r=>{
     if(!r.groupId)return r;
     const g=groups.get(r.groupId);
@@ -232,9 +241,10 @@ export function saveRoutineAnswer(state,input,themes) {
   const recordId=`routine-${answer.key}`;
   let record;
   if(answer.answer!=='skip') {
+    const text=answer.answer==='bedtime'?`${answer.bedtime.replace('T',' ')}에 누웠어요.`:`${routine.title} 완료`;
     record=validateRecord({id:recordId,date:answer.answer==='bedtime'?answer.bedtime.slice(0,10):answer.date,
-      text:answer.answer==='bedtime'?`${answer.bedtime.replace('T',' ')}에 누웠어요.`:`${routine.title} 완료`,
-      result:'',themes,group:'고정 루틴',saved:state.records.find(r=>r.id===recordId)?.saved??false});
+      text,
+      result:'',themes,group:text.replace(/[\u0000-\u001f]/g,' ').slice(0,80),saved:state.records.find(r=>r.id===recordId)?.saved??false});
   }
   const i=state.checkins.findIndex(a=>a.key===answer.key);
   if(i<0)state.checkins.push(answer);else state.checkins[i]=answer;
