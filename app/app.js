@@ -1,5 +1,5 @@
 import {api, CloudStore, enablePush, disablePush, codexRequest} from './cloud.js';
-import {mergeGroups,splitGroup,projectRecords,putRecord,patchGroup,sortedWorkGroups,newestRecords,groupRecords,ALL_THEMES,THEMES,today,shiftDate,weekStart,activeThemes,themesByDate,flowerStage,validateRecord,emptyState,validateState,weekSummary,demoState,validateRoutine,validateCheckin,routineDue,saveRoutineAnswer,routineTime} from './model.js';
+import {moveGroupedRecord,restoreWork,mergeGroups,splitGroup,projectRecords,putRecord,patchGroup,sortedWorkGroups,newestRecords,groupRecords,ALL_THEMES,THEMES,today,shiftDate,weekStart,activeThemes,themesByDate,flowerStage,validateRecord,emptyState,validateState,weekSummary,demoState,validateRoutine,validateCheckin,routineDue,saveRoutineAnswer,routineTime} from './model.js';
 // Wanted Montage IconCheckThick (MIT); see THIRD_PARTY_NOTICES.md.
 const stampCheck = '<svg viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" focusable="false"><path d="M19.6697 6.58096C20.1774 7.08864 20.1774 7.91175 19.6697 8.41943L10.6697 17.4194C10.1621 17.9271 9.33894 17.9271 8.83126 17.4194L4.33126 12.9194C3.82358 12.4118 3.82358 11.5886 4.33126 11.081C4.83894 10.5733 5.66206 10.5733 6.16974 11.081L9.7505 14.6617L17.8313 6.58096C18.3389 6.07327 19.1621 6.07327 19.6697 6.58096Z" fill="currentColor"/></svg>';
 const themeIcons = {"money": "<svg viewBox=\"0 0 24 24\" width=\"1em\" height=\"1em\" aria-hidden=\"true\" focusable=\"false\"><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M3.60012 6.26021C3.60011 6.25652 3.6001 6.25282 3.6001 6.24912C3.6001 4.77151 4.89967 3.80957 6.28325 3.25705C7.75331 2.67001 9.75063 2.34887 12.0002 2.34912C14.2496 2.34937 16.2468 2.67051 17.7168 3.25739C19.0979 3.80876 20.3954 4.768 20.4 6.24125C20.4001 6.244 20.4001 6.24676 20.4001 6.24951V17.4995L20.4 17.5096C20.394 18.9814 19.0973 19.9402 17.7169 20.4914C16.2468 21.0785 14.2495 21.3996 12 21.3994C9.75056 21.3991 7.75331 21.078 6.28332 20.4911C4.89982 19.9387 3.6001 18.9771 3.6001 17.4994L3.60012 17.4927V13.7605L3.6001 13.7494L3.60012 13.7427V10.0105L3.6001 9.99937L3.60012 9.99266V6.26021ZM5.40011 6.24553C5.40251 5.9725 5.6787 5.43668 6.9508 4.92869C8.14203 4.45299 9.89469 4.14889 12 4.14912C14.1054 4.14936 15.8581 4.45347 17.0494 4.92909C18.3272 5.43923 18.6001 5.97732 18.6001 6.24912C18.6001 6.52102 18.327 7.05932 17.0493 7.56955C15.8581 8.04525 14.1055 8.34936 12.0002 8.34912C9.89476 8.34889 8.14202 8.04477 6.95073 7.56916C5.67991 7.06179 5.4031 6.52679 5.40012 6.25359V6.24951L5.40011 6.24553ZM18.6001 8.81872V9.99261L18.6001 9.99937C18.6001 10.2713 18.327 10.8096 17.0493 11.3198C15.8581 11.7955 14.1055 12.0996 12.0002 12.0994C9.89476 12.0991 8.14202 11.795 6.95073 11.3194C5.67991 10.812 5.4031 10.277 5.40012 10.0038V8.81847C5.68202 8.9796 5.98067 9.12002 6.28332 9.24085C7.75331 9.82774 9.75056 10.1489 12 10.1491C14.2495 10.1494 16.2468 9.82824 17.7169 9.24119C18.0195 9.12033 18.3182 8.97988 18.6001 8.81872ZM5.40012 13.7538V12.5687C5.68202 12.7298 5.98067 12.8703 6.28332 12.9911C7.75331 13.578 9.75056 13.8991 12 13.8994C14.2495 13.8996 16.2468 13.5785 17.7169 12.9914C18.0195 12.8706 18.3182 12.7301 18.6001 12.569V13.7425L18.6001 13.7494C18.6001 14.0213 18.327 14.5596 17.0493 15.0698C15.8581 15.5455 14.1055 15.8496 12.0002 15.8494C9.89476 15.8491 8.14202 15.545 6.95073 15.0694C5.67991 14.562 5.4031 14.027 5.40012 13.7538ZM17.7169 16.7414C18.0195 16.6206 18.3182 16.4801 18.6001 16.319V17.4925L18.6001 17.4994C18.6001 17.7713 18.327 18.3096 17.0493 18.8198C15.8581 19.2955 14.1055 19.5996 12.0002 19.5994C9.89476 19.5991 8.14202 19.295 6.95073 18.8194C5.67881 18.3116 5.40262 17.7761 5.40011 17.5031L5.40012 17.4995V16.3187C5.68202 16.4798 5.98067 16.6203 6.28332 16.7411C7.75331 17.328 9.75056 17.6491 12 17.6494C14.2495 17.6496 16.2468 17.3285 17.7169 16.7414Z\" fill=\"currentColor\" /></svg>", "career": "<svg viewBox=\"0 0 24 24\" width=\"1em\" height=\"1em\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M8.99989 10.1C8.50283 10.1 8.09989 10.5029 8.09989 11C8.09989 11.4971 8.50283 11.9 8.99989 11.9H14.9999C15.4969 11.9 15.8999 11.4971 15.8999 11C15.8999 10.5029 15.4969 10.1 14.9999 10.1H8.99989Z\" fill=\"currentColor\" /><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M9.57023 2.09998H14.4297C14.684 2.09995 14.9261 2.09993 15.1301 2.11659C15.3525 2.13476 15.6076 2.17715 15.8625 2.30707C16.2201 2.48923 16.5107 2.77989 16.6929 3.1374C16.8228 3.39237 16.8652 3.64748 16.8833 3.86989C16.9 4.07385 16.9 4.3159 16.9 4.57022L16.9 5.59998L17.8354 5.59998C18.3652 5.59996 18.8164 5.59995 19.1868 5.63022C19.576 5.66201 19.9546 5.73165 20.3165 5.91606C20.8622 6.19409 21.3058 6.63774 21.5839 7.18341C21.7683 7.54534 21.8379 7.92393 21.8697 8.31309C21.9 8.68351 21.8999 9.13466 21.8999 9.6645V16.8354C21.8999 17.3652 21.9 17.8165 21.8697 18.1869C21.8379 18.576 21.7683 18.9546 21.5839 19.3166C21.3058 19.8622 20.8622 20.3059 20.3165 20.5839C19.9546 20.7683 19.576 20.8379 19.1868 20.8697C18.8164 20.9 18.3653 20.9 17.8354 20.9H6.16459C5.63476 20.9 5.18353 20.9 4.81312 20.8697C4.42396 20.8379 4.04536 20.7683 3.68343 20.5839C3.13776 20.3059 2.69412 19.8622 2.41609 19.3166C2.23168 18.9546 2.16204 18.576 2.13025 18.1869C2.09998 17.8165 2.09999 17.3653 2.10001 16.8355V9.66458C2.09999 9.13474 2.09998 8.68351 2.13025 8.31309C2.16204 7.92393 2.23168 7.54534 2.41609 7.18341C2.69412 6.63774 3.13776 6.19409 3.68343 5.91606C4.04536 5.73165 4.42396 5.66201 4.81312 5.63022C5.18355 5.59995 5.63473 5.59996 6.16459 5.59998L7.1 5.59998L7.09999 4.57022C7.09997 4.3159 7.09995 4.07385 7.11661 3.86989C7.13478 3.64748 7.17717 3.39237 7.30708 3.1374C7.48924 2.77989 7.7799 2.48923 8.13741 2.30707C8.39239 2.17715 8.6475 2.13476 8.8699 2.11659C9.07387 2.09993 9.31591 2.09995 9.57023 2.09998ZM15.1 4.00002V5.60002H8.89998V4.00002C8.89998 3.9448 8.94475 3.90002 8.99998 3.90002H15C15.0552 3.90002 15.1 3.94479 15.1 4.00002ZM5.79998 7.40002C4.98542 7.40002 4.79159 7.41113 4.66007 7.45386C4.32519 7.56267 4.06264 7.82522 3.95383 8.16011C3.91109 8.29163 3.89999 8.48546 3.89999 9.30002V17.2C3.89999 18.0146 3.91109 18.2084 3.95383 18.3399C4.06264 18.6748 4.32519 18.9374 4.66007 19.0462C4.79159 19.0889 4.98542 19.1 5.79998 19.1H18.1999C19.0145 19.1 19.2083 19.0889 19.3398 19.0462C19.6747 18.9374 19.9373 18.6748 20.0461 18.3399C20.0888 18.2084 20.0999 18.0146 20.0999 17.2V9.30002C20.0999 8.48546 20.0888 8.29163 20.0461 8.16011C19.9373 7.82522 19.6747 7.56267 19.3398 7.45386C19.2083 7.41113 19.0145 7.40002 18.1999 7.40002H5.79998Z\" fill=\"currentColor\" /></svg>", "health": "<svg viewBox=\"0 0 24 24\" width=\"1em\" height=\"1em\" aria-hidden=\"true\" focusable=\"false\"><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M1.50006 9.4001C1.50006 5.93664 4.17005 3.1001 7.60004 3.1001C9.34251 3.1001 10.8974 3.83723 12 5.01883C13.1027 3.83723 14.6575 3.1001 16.4 3.1001C19.83 3.1001 22.5 5.93664 22.5 9.4001C22.5 11.04 21.9064 12.4208 20.9792 13.7026C20.0691 14.9607 18.8031 16.1683 17.4124 17.4596L17.4082 17.4635L13.6686 20.8915C13.4958 21.0499 13.3299 21.202 13.1792 21.3198C13.0137 21.4492 12.812 21.5821 12.5557 21.6605C12.1935 21.7712 11.8065 21.7712 11.4444 21.6605C11.1881 21.5821 10.9864 21.4492 10.8209 21.3198C10.6701 21.202 10.5043 21.0499 10.3314 20.8915L6.59189 17.4635L6.58764 17.4596C5.19696 16.1683 3.93093 14.9607 3.02085 13.7026C2.09362 12.4208 1.50006 11.04 1.50006 9.4001ZM7.60003 4.8999C5.23003 4.8999 3.30004 6.86336 3.30004 9.3999C3.30004 10.56 3.70648 11.5792 4.47924 12.6474C5.26876 13.7388 6.402 14.8307 7.81033 16.1384L11.9324 19.9171C11.9707 19.9521 12.0293 19.9521 12.0676 19.917L16.1897 16.1384C17.598 14.8306 18.7313 13.7388 19.5208 12.6474C20.2935 11.5792 20.7 10.56 20.7 9.3999C20.7 6.86336 18.77 4.8999 16.4 4.8999C14.8671 4.8999 13.5322 5.71317 12.7691 6.96893C12.6059 7.23757 12.3144 7.40158 12 7.40158C11.6857 7.40158 11.3941 7.23757 11.2309 6.96893C10.4678 5.71317 9.13295 4.8999 7.60003 4.8999Z\" fill=\"currentColor\" /></svg>"};
@@ -63,7 +63,107 @@ function recordRow(r) {
 function groupTags(items) {
   return `<span class="group-tags">${[...new Set(items.flatMap(r=>r.themes))].map(id=>`<span class="pill" data-theme="${esc(id)}" style="--accent:${id==='money'?'var(--flower-orange)':theme(id).color}">${esc(theme(id).name)}</span>`).join('')}</span>`;
 }
+let arranging=false,pickedItem=null,workUndo=null;
+const expandedGroups=new Set();
+function arrangeList(records) {
+  const ids=new Set(records.map(r=>r.groupId));
+  const groups=data().groups.filter(g=>ids.has(g.id));
+  const handle=(type,id)=>`<button class="drag-handle" data-drag-type="${type}" data-drag-id="${esc(id)}" data-action="arrange-pick" data-type="${type}" data-id="${esc(id)}" aria-label="${type==='group'?'묶음':'기록'} 옮기기" title="드래그하거나 눌러서 옮기기">⠿</button>`;
+  return `<div class="arrange-list"><p class="quiet arrange-help">타일을 겹치면 합쳐져요. 클릭하면 안의 기록을 꺼낼 수 있어요.<br>손잡이를 누르고 목적지를 눌러도 옮길 수 있어요. 변경은 바로 저장돼요.</p>${pickedItem?'<p class="arrange-selection" role="status">놓을 묶음이나 꺼내기 영역을 선택해주세요. <button class="text-button" data-action="arrange-cancel">선택 취소</button></p>':''}${groups.map(g=>{
+    const items=newestRecords(records.filter(r=>r.groupId===g.id)),open=expandedGroups.has(g.id);
+    const source=pickedItem?.type==='group'?pickedItem.id:data().records.find(r=>r.id===pickedItem?.id)?.groupId;
+    return `<section class="arrange-tile" data-drop-group="${esc(g.id)}"><div class="arrange-heading">${handle('group',g.id)}<button class="arrange-open" data-action="arrange-open" data-id="${esc(g.id)}" data-drag-type="group" data-drag-id="${esc(g.id)}" aria-expanded="${open}">${groupTags(items)}<strong>${esc(g.title||'해낸 일')}</strong><span class="count">${items.length}</span><span aria-hidden="true">${open?'⌃':'⌄'}</span></button></div>${pickedItem&&source!==g.id?`<button class="secondary full" data-action="arrange-drop" data-id="${esc(g.id)}">${pickedItem.type==='group'?'이 묶음에 합치기':'이 묶음으로 옮기기'}</button>`:''}${open?`<div class="arrange-items">${items.map(r=>`<div class="arrange-record" data-drag-type="record" data-drag-id="${esc(r.id)}">${handle('record',r.id)}<span>${esc(r.summary||r.text)}</span></div>`).join('')}<button class="text-button" data-action="group-add" data-id="${esc(items[0].id)}">＋ 기록 추가</button></div>`:''}</section>`;
+  }).join('')}<button class="arrange-new" data-drop-group="" data-action="arrange-drop" data-id="">＋ 여기에 놓아 새 묶음으로 꺼내기</button></div>`;
+}
+async function arrangeDrop(item,targetId='') {
+  if(saving||!arranging)return;
+  const source=demo?demoData:state,before={groups:structuredClone(source.groups),records:structuredClone(source.records)};
+  const destination=data().groups.find(g=>g.id===targetId),newId=crypto.randomUUID();
+  const change=s=>{
+    if(item.type==='group')mergeGroups(s,[targetId,item.id],destination?.title||'해낸 일');
+    else moveGroupedRecord(s,item.id,targetId,newId);
+  };
+  try{change(structuredClone(source));}catch(error){toast(error.message);return;}
+  if(!await update(change))return;
+  // Store the intended result, not unrelated records merged in by another device.
+  const after=structuredClone(before);change(after);
+  workUndo={before,after,demo};pickedItem=null;
+  if(item.type==='record')expandedGroups.add(targetId||newId);
+  filter='';render();
+  toast(targetId?'옮겼어요. 실행 취소로 되돌릴 수 있어요.':'새 묶음으로 꺼냈어요. 제목을 눌러 내용을 확인할 수 있어요.');
+}
+async function undoArrange() {
+  if(!workUndo||workUndo.demo!==demo)return;
+  const {before,after}=workUndo;
+  try{restoreWork(structuredClone(demo?demoData:state),before,after);}catch(error){toast(error.message);workUndo=null;render();return;}
+  if(!await update(s=>restoreWork(s,before,after)))return;
+  workUndo=null;pickedItem=null;render();toast('이전 묶음으로 되돌렸어요.');
+}
+let groupDrag=null,suppressDragClick=false,dragScrollFrame=0;
+function dragTarget(x,y) {
+  const el=document.elementFromPoint(x,y)?.closest('[data-drop-group]');
+  const item=groupDrag?.item;if(!el||!item)return null;
+  const sourceId=item.type==='group'?item.id:data().records.find(r=>r.id===item.id)?.groupId;
+  const targetId=el.dataset.dropGroup;
+  if(targetId===sourceId||(!targetId&&(item.type!=='record'||data().records.filter(r=>r.groupId===sourceId).length<2)))return null;
+  return el;
+}
+function paintDrag() {
+  if(!groupDrag?.active)return;
+  const {x,y,ghost}=groupDrag;
+  const target=dragTarget(x,y);
+  document.querySelectorAll('.drop-ready').forEach(el=>el.classList.remove('drop-ready'));
+  target?.classList.add('drop-ready');
+  const title=target?.dataset.dropGroup?data().groups.find(g=>g.id===target.dataset.dropGroup)?.title||'해낸 일':'';
+  ghost.textContent=target?(title?`“${title}”에 ${groupDrag.item.type==='group'?'합치기':'옮기기'}`:'새 묶음으로 꺼내기'):'놓을 위치로 옮겨주세요';
+  ghost.style.left=`${Math.max(8,Math.min(x+12,window.innerWidth-240))}px`;
+  ghost.style.top=`${Math.max(8,Math.min(y+16,window.innerHeight-64))}px`;
+}
+function scrollDrag() {
+  if(!groupDrag?.active)return;
+  const y=groupDrag.y,delta=y<72?-10:y>window.innerHeight-72?10:0;
+  if(delta){window.scrollBy(0,delta);paintDrag();}
+  dragScrollFrame=requestAnimationFrame(scrollDrag);
+}
+function cancelGroupDrag() {
+  const drag=groupDrag;groupDrag=null;cancelAnimationFrame(dragScrollFrame);
+  drag?.ghost?.remove();drag?.element?.classList.remove('drag-source');
+  document.querySelectorAll('.drop-ready').forEach(el=>el.classList.remove('drop-ready'));
+  document.body.classList.remove('group-dragging');
+  if(drag?.element?.hasPointerCapture(drag.pointerId))drag.element.releasePointerCapture(drag.pointerId);
+}
+document.addEventListener('pointerdown',event=>{
+  if(!arranging||saving||dialog.open||event.button!==0||groupDrag)return;
+  const element=event.target.closest('[data-drag-type]');if(!element)return;
+  if(event.pointerType!=='mouse'&&!element.classList.contains('drag-handle'))return;
+  groupDrag={element,pointerId:event.pointerId,item:{type:element.dataset.dragType,id:element.dataset.dragId},startX:event.clientX,startY:event.clientY,x:event.clientX,y:event.clientY,active:false};
+  element.setPointerCapture(event.pointerId);
+});
+document.addEventListener('pointermove',event=>{
+  if(!groupDrag||groupDrag.pointerId!==event.pointerId)return;
+  const drag=groupDrag;drag.x=event.clientX;drag.y=event.clientY;
+  if(!drag.active&&Math.hypot(drag.x-drag.startX,drag.y-drag.startY)<8)return;
+  event.preventDefault();
+  if(!drag.active){
+    drag.active=true;suppressDragClick=true;drag.ghost=document.createElement('div');drag.ghost.className='drag-feedback';drag.ghost.setAttribute('aria-hidden','true');document.body.append(drag.ghost);
+    drag.element.classList.add('drag-source');document.body.classList.add('group-dragging');scrollDrag();
+  }
+  paintDrag();
+},{passive:false});
+document.addEventListener('pointerup',event=>{
+  if(!groupDrag||groupDrag.pointerId!==event.pointerId)return;
+  const {item,active}=groupDrag,target=active?dragTarget(event.clientX,event.clientY):null,targetId=target?.dataset.dropGroup;
+  cancelGroupDrag();
+  if(active){setTimeout(()=>{suppressDragClick=false;},0);if(target)void arrangeDrop(item,targetId);}
+});
+document.addEventListener('pointercancel',()=>{cancelGroupDrag();suppressDragClick=false;});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'){cancelGroupDrag();pickedItem=null;suppressDragClick=false;if(arranging)render();}});
+window.addEventListener('blur',()=>{cancelGroupDrag();suppressDragClick=false;});
+document.addEventListener('click',event=>{if(suppressDragClick){event.preventDefault();event.stopImmediatePropagation();}},true);
+document.addEventListener('dragstart',event=>{if(arranging&&event.target.closest('[data-drag-type]'))event.preventDefault();});
+
 function recordsList(records) {
+  if(arranging)return arrangeList(records);
   if(!records.length) return `<div class="empty"><span>아직 기록이 없어요.</span><p>이미 한 일이 있다면 한 줄만 적어보세요.</p></div>`;
   return sortedWorkGroups(records).map(([name,items])=>`<section class="work-group"><button class="work-group-open" data-action="group" data-id="${esc(items[0].id)}" aria-label="${esc(name||'해낸 일')} ${items.length}개 · 묶음 내역 보기"><span class="work-group-heading">${groupTags(items)}<strong class="work-group-title">${esc(name||'해낸 일')}</strong><span class="count">${items.length}</span><svg class="group-chevron" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M7.86337 3.36272C7.51189 3.7142 7.51189 4.28405 7.86337 4.63552L15.227 11.9991L7.86337 19.3627C7.51189 19.7142 7.51189 20.284 7.86337 20.6355C8.21484 20.987 8.78469 20.987 9.13616 20.6355L17.1362 12.6355C17.4876 12.284 17.4876 11.7142 17.1362 11.3627L9.13616 3.36272C8.78469 3.01125 8.21484 3.01125 7.86337 3.36272Z" fill="currentColor"/></svg></span></button></section>`).join('');
 }
@@ -114,25 +214,19 @@ function daily() {
   const records=data().records.filter(r=>r.date===selected&&(!filter||r.themes.includes(filter)));
   const rest=data().rest.includes(selected), isToday=selected===today();
   return `<div class="page-heading"><div><h1 class="date-heading"><time datetime="${selected}">${selected.replaceAll('-','.')} ${new Intl.DateTimeFormat('ko-KR',{weekday:'long',timeZone:'UTC'}).format(new Date(`${selected}T12:00:00Z`))}</time></h1></div><div class="heading-actions"><button class="secondary" data-action="record">직접 기록하기</button><button class="primary" data-action="codex">${isToday?'오늘':'이날'} 한 일 가져오기</button></div></div><div class="dashboard"><div class="daily-column">${checkinsPanel()}<section class="bloom-card"><div class="bloom-head"><span class="pill">${isToday?'오늘의 꽃':'이날의 꽃'}</span><span class="quiet">${rest?'쉬어가는 날':total?`${total}단계 · ${total}개 테마 실천`:'0단계 · 아직 기록 없음'}</span></div><div class="hero-flower">${flower(flags,'',`${total}개 테마 실천`)}</div><h2>${total?'잘했어요! 해낸 일이 쌓이고 있어요.':rest?'오늘은 편하게 쉬어요.':'이미 한 일이 있나요?'}</h2><p>${total?'아래 도장에서 어떤 일을 했는지 확인해요.':rest?'나중에 기록하고 싶을 때 다시 와도 돼요.':'Codex에서 가져오거나 직접 기록해보세요.'}</p><div class="stamps">${THEMES.map((t,i)=>`<button class="stamp ${flags[i]?'done':''} ${filter===t.id?'active':''}" data-action="filter" data-theme="${t.id}" style="--accent:${t.color}" aria-pressed="${filter===t.id}" aria-label="${t.name} ${flags[i]?'완료':'기록 없음'}, 기록 보기"><span class="stamp-shape">${flags[i]?stampCheck:themeIcons[t.id]}</span><strong>${t.name}</strong></button>`).join('')}</div></section>
-    <section class="card records"><div class="section-top"><h2>${filter?theme(filter).name+'의 기록':'이날 해낸 일'} <span class="count">${records.length}</span></h2>${filter?'<button class="text-button" data-action="clear-filter">전체 보기</button>':''}${data().records.some(r=>r.date===selected)?'':`<button class="text-button" data-action="rest">${rest?'쉬어감 취소':'오늘은 쉬어가기'}</button>`}</div>${sortedWorkGroups(records).length>1?'<button class="text-button" data-action="group-merge">묶음 합치기</button>':''}${recordsList(records)}</section></div><aside>${calendar()}</aside></div>`;
+    <section class="card records"><div class="section-top"><h2>${filter?theme(filter).name+'의 기록':'이날 해낸 일'} <span class="count">${records.length}</span></h2>${filter?'<button class="text-button" data-action="clear-filter">전체 보기</button>':''}${data().records.some(r=>r.date===selected)?'':`<button class="text-button" data-action="rest">${rest?'쉬어감 취소':'오늘은 쉬어가기'}</button>`}</div>${records.length?`<div class="arrange-toolbar"><button class="${arranging?'primary':'secondary'}" data-action="arrange-toggle">${arranging?'편집 완료':'편집'}</button>${arranging&&workUndo?'<button class="secondary" data-action="arrange-undo">실행 취소</button>':''}</div>`:''}${recordsList(records)}</section></div><aside>${calendar()}</aside></div>`;
 }
-function regroupForm(id='') {
-  const items=id?groupItems(id):[],splitting=!!id;
-  if(splitting&&items.length<2)return;
-  const groups=sortedWorkGroups(data().records.filter(r=>r.date===selected&&(!filter||r.themes.includes(filter))));
-  const options=splitting?items.map(r=>({id:r.id,title:r.summary||r.text,detail:''})):groups.map(([name,rs])=>({id:rs[0].groupId,title:name||'해낸 일',detail:`${rs.length}개 · ${rs[0].themes.map(t=>theme(t).name).join(' · ')}`}));
-  showDialog(`${closeButton}<h2>${splitting?'기록 분리하기':'묶음 합치기'}</h2><p class="quiet">${splitting?'선택한 기록을 새 묶음으로 옮겨요. 날짜와 테마는 유지돼요.':'같은 날짜의 묶음을 하나로 합쳐요. 기록 내용과 선택한 묶음의 테마를 모두 유지해요.'}</p><form id="regroup-form"><fieldset class="group-selection"><legend>${splitting?'분리할 기록':'합칠 묶음'}</legend>${options.map(o=>`<label><input type="checkbox" name="selection" value="${esc(o.id)}"><span>${esc(o.title)}${o.detail?`<small>${esc(o.detail)}</small>`:''}</span></label>`).join('')}</fieldset><label for="regroup-title">${splitting?'새 묶음 이름':'합친 묶음 이름'}</label><input id="regroup-title" name="title" maxlength="80" required><p class="form-error" role="alert"></p><div class="inline-actions"><button type="button" class="secondary" id="regroup-cancel">취소</button><button class="primary">${splitting?'선택한 기록 분리하기':'선택한 묶음 합치기'}</button></div></form>`);
-  dialog.querySelector('#regroup-cancel').onclick=()=>splitting?groupDetail(id):void closeDialog();
+function regroupForm(id) {
+  const items=groupItems(id);if(items.length<2)return;
+  showDialog(`${closeButton}<h2>기록 분리하기</h2><p class="quiet">선택한 기록을 새 묶음으로 옮겨요. 날짜와 테마는 유지돼요.</p><form id="regroup-form"><fieldset class="group-selection"><legend>분리할 기록</legend>${items.map(r=>`<label><input type="checkbox" name="selection" value="${esc(r.id)}"><span>${esc(r.summary||r.text)}</span></label>`).join('')}</fieldset><label for="regroup-title">새 묶음 이름</label><input id="regroup-title" name="title" maxlength="80" required><p class="form-error" role="alert"></p><div class="inline-actions"><button type="button" class="secondary" id="regroup-cancel">취소</button><button class="primary">선택한 기록 분리하기</button></div></form>`);
+  dialog.querySelector('#regroup-cancel').onclick=()=>groupDetail(id);
   dialog.querySelector('#regroup-form').onsubmit=async event=>{
     event.preventDefault();
     const form=event.currentTarget,fd=new FormData(form),ids=fd.getAll('selection'),title=fd.get('title').trim(),newId=crypto.randomUUID();
-    const change=s=>splitting?splitGroup(s,items[0].groupId,ids,title,newId):mergeGroups(s,ids,title);
+    const change=s=>splitGroup(s,items[0].groupId,ids,title,newId);
     try{change(structuredClone(demo?demoData:state));}catch(error){form.querySelector('.form-error').textContent=error.message;return;}
     if(!await update(change))return;
-    filter='';render();
-    const record=data().records.find(r=>r.groupId===(splitting?newId:ids[0]));
-    if(record)groupDetail(record.id);
-    toast(splitting?'선택한 기록을 새 묶음으로 옮겼어요.':'선택한 묶음을 하나로 합쳤어요.');
+    filter='';render();groupDetail(ids[0]);toast('선택한 기록을 새 묶음으로 옮겼어요.');
   };
 }
 function futurePage() {
@@ -212,18 +306,23 @@ async function action(event) {
   if(saving){toast('저장 중이에요. 잠시 기다려주세요.');return;}
   if(kind.startsWith('cloud-')){await cloudAction(kind);return;}
   if(kind==='nav'){page=button.dataset.page;render();window.scrollTo({top:0});return;}
-  if(kind==='demo'){demo=!demo;page='today';selected=today();month=selected.slice(0,7);filter='';render();return;}
+  if(kind==='demo'){arranging=false;workUndo=null;pickedItem=null;expandedGroups.clear();demo=!demo;page='today';selected=today();month=selected.slice(0,7);filter='';render();return;}
   if(kind==='codex'){await collectCodex();return;}
   if(kind==='codex-settings'){await codexSettings();return;}
   if(kind==='record'){recordForm('',filter);return;}
+  if(kind==='arrange-toggle'){arranging=!arranging;expandedGroups.clear();pickedItem=null;render();return;}
+  if(kind==='arrange-undo'){await undoArrange();return;}
+  if(kind==='arrange-open'){expandedGroups.has(id)?expandedGroups.delete(id):expandedGroups.add(id);render();return;}
+  if(kind==='arrange-pick'){pickedItem={type:button.dataset.type,id};render();document.querySelector('[data-action="arrange-drop"]')?.focus();return;}
+  if(kind==='arrange-cancel'){pickedItem=null;render();return;}
+  if(kind==='arrange-drop'){if(pickedItem)await arrangeDrop(pickedItem,id);return;}
   if(kind==='group'){groupDetail(id);return;}
-  if(kind==='group-merge'){regroupForm();return;}
   if(kind==='group-split'){regroupForm(id);return;}
   if(kind==='group-add'){const record=data().records.find(r=>r.id===id);if(record)recordForm('','',record.groupId);return;}
   if(kind==='edit'){recordForm(id);return;}
   if(kind==='filter'){filter=filter===button.dataset.theme?'':button.dataset.theme;render();return;}
   if(kind==='clear-filter'){filter='';render();return;}
-  if(kind==='date'){selected=button.dataset.date;month=selected.slice(0,7);page='today';filter='';render();return;}
+  if(kind==='date'){arranging=false;pickedItem=null;expandedGroups.clear();selected=button.dataset.date;month=selected.slice(0,7);page='today';filter='';render();return;}
   if(kind==='month'){const d=new Date(`${month}-01T12:00:00Z`);d.setUTCMonth(d.getUTCMonth()+Number(button.dataset.delta));month=d.toISOString().slice(0,7);render();return;}
   if(kind==='week'){reviewDate=shiftDate(reviewDate,Number(button.dataset.delta));render();return;}
   if(kind==='rest'){if(await update(s=>{s.rest=s.rest.includes(selected)?s.rest.filter(d=>d!==selected):[...s.rest,selected];})){render();toast(data().rest.includes(selected)?'쉬어가는 날로 남겼어요. 기존 기록은 그대로예요.':'쉬어감 표시를 취소했어요.');}return;}
@@ -443,6 +542,7 @@ async function cloudAction(kind) {
 let refreshingCloud=false;
 function canRefreshCloud() {
   return cloud&&!demo&&!saving&&!cloud.busy&&!dialog.open&&!document.hidden&&!cloud.pending().length&&
+    !document.querySelector('.arrange-list')&&
     !document.querySelector('form :focus')&&
     ![...document.querySelectorAll('form input,form textarea')].some(el=>el.type==='checkbox'||el.type==='radio'?el.checked!==el.defaultChecked:el.value!==el.defaultValue);
 }

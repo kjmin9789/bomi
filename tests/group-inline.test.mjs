@@ -131,3 +131,17 @@ test('Codex 재가져오기는 직접 합치거나 분리한 묶음을 되돌리
  vm.runInContext(source.slice(start,source.indexOf('}))return;',start)),context);
  assert.deepEqual(state.groups,groups);assert.equal(state.records.find(r=>r.id==='c').groupId,'custom');assert.equal(state.records.find(r=>r.id==='c').text,'새 내용');assert.doesNotThrow(()=>validateState(state));
 });
+
+test('드롭 저장 실패는 묶음과 실행 취소 상태를 바꾸지 않고 성공 후에만 갱신한다',async()=>{
+ const {emptyState,putRecord,mergeGroups,moveGroupedRecord,restoreWork,projectRecords}=await import('../app/model.js');
+ for(const success of [false,true]){
+  const state=emptyState(),base={date:'2026-10-10',text:'실제 행동',result:'',themes:['career']};
+  putRecord(state,{...base,id:'a',group:'첫 묶음'},'g1');putRecord(state,{...base,id:'b',group:'받는 묶음'},'g2');
+  const before=structuredClone(state);let renders=0;
+  const context=vm.createContext({state,demo:false,saving:false,arranging:true,workUndo:null,pickedItem:{type:'group',id:'g1'},expandedGroups:new Set(),structuredClone,crypto:{randomUUID:()=> 'new'},data:()=>({...state,records:projectRecords(state)}),mergeGroups,moveGroupedRecord,restoreWork,update:async change=>{if(!success)return false;change(state);return true;},render:()=>renders++,toast(){}});
+  vm.runInContext(source.slice(source.indexOf('async function arrangeDrop('),source.indexOf('let groupDrag=')),context);
+  await context.arrangeDrop({type:'group',id:'g1'},'g2');
+  if(success){assert.equal(state.groups.length,1);assert.equal(state.groups[0].title,'받는 묶음');assert.equal(renders,1);await context.undoArrange();assert.deepEqual(state,before);}
+  else{assert.deepEqual(state,before);assert.equal(context.workUndo,null);assert.equal(renders,0);assert.equal(context.pickedItem.id,'g1');}
+ }
+});

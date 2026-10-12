@@ -130,6 +130,25 @@ export function splitGroup(state,id,recordIds,title,newId) {
   const chosen=new Set(recordIds);
   state.records=state.records.map(r=>chosen.has(r.id)?{...r,groupId:newId}:r);
 }
+export function moveGroupedRecord(state,recordId,targetId,newId) {
+  const record=state.records.find(r=>r.id===recordId);
+  if(!record)throw new Error('기록이 변경됐어요. 다시 선택해주세요.');
+  const source=state.groups.find(g=>g.id===record.groupId);
+  if(!targetId) {
+    const title=(record.summary||record.text).split(/[\r\n]/)[0].trim().slice(0,80)||'해낸 일';
+    splitGroup(state,source.id,[recordId],title,newId);
+    return;
+  }
+  const target=state.groups.find(g=>g.id===targetId);
+  if(!target||target.date!==source.date||target.id===source.id)throw new Error('다른 묶음 위에 놓아주세요.');
+  target.themes=[...new Set([...target.themes,...source.themes])];
+  record.groupId=target.id;
+  if(!state.records.some(r=>r.groupId===source.id))state.groups=state.groups.filter(g=>g.id!==source.id);
+}
+export function restoreWork(state,before,after) {
+  if(JSON.stringify([state.groups,state.records])!==JSON.stringify([after.groups,after.records]))throw new Error('이후 기록이 변경되어 실행 취소할 수 없어요. 현재 기록을 확인해주세요.');
+  state.groups=structuredClone(before.groups);state.records=structuredClone(before.records);
+}
 export const emptyState = () => ({version:2,groups:[],records:[],futures:{},reviews:{},rest:[],reminder:'',snoozed:{},routines:[],checkins:[]});
 export function validateState(data) {
   if (!data || ![1,2].includes(data.version) || !Array.isArray(data.records) || data.records.length>20000) throw new Error('지원하는 보미 백업 파일이 아니에요.');

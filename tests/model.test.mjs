@@ -233,3 +233,28 @@ test('잘못된 합치기·분리는 변경 없이 거절하고 같은 제목도
  splitGroup(s,'g1',['a'],'동일','new');s.groups.find(g=>g.id==='g1').title='동일';
  assert.equal(groupRecords(projectRecords(validateState(s))).length,3);
 });
+
+test('기록을 기존 묶음으로 옮기면 내용과 날짜를 보존하고 빈 묶음만 정리한다',async()=>{
+ const {putRecord,moveGroupedRecord}=await import('../app/model.js'),s=emptyState();
+ putRecord(s,{...record('a'),group:'첫 묶음',summary:'요약',saved:true},'g1');
+ putRecord(s,{...record('b','2026-10-10',['health']),group:'받는 묶음'},'g2');
+ const before=structuredClone(s.records[0]);moveGroupedRecord(s,'a','g2');
+ assert.deepEqual(s.records[0],{...before,groupId:'g2'});assert.equal(s.groups.length,1);assert.equal(s.groups[0].title,'받는 묶음');
+ assert.deepEqual(s.groups[0].themes,['health','career']);assert.doesNotThrow(()=>validateState(s));
+ const same=structuredClone(s);assert.throws(()=>moveGroupedRecord(s,'a','g2'));assert.deepEqual(s,same);
+});
+test('묶음 밖으로 꺼낼 때 제목은 기록에서 가져오고 단독 기록은 꺼내지 않는다',async()=>{
+ const {putRecord,moveGroupedRecord}=await import('../app/model.js'),s=emptyState();
+ putRecord(s,{...record('a'),summary:'꺼낸 기록'},'g');putRecord(s,record('b'),'g');
+ moveGroupedRecord(s,'a','','new');assert.equal(s.groups.find(g=>g.id==='new').title,'꺼낸 기록');
+ assert.equal(s.records.find(r=>r.id==='a').groupId,'new');assert.equal(s.records.find(r=>r.id==='b').groupId,'g');
+ const before=structuredClone(s);assert.throws(()=>moveGroupedRecord(s,'a','','another'));assert.deepEqual(s,before);
+});
+test('묶음 실행 취소는 미래 등 다른 설정을 보존하고 이후 기록 변경은 덮어쓰지 않는다',async()=>{
+ const {putRecord,mergeGroups,restoreWork}=await import('../app/model.js'),s=emptyState();
+ putRecord(s,record('a'),'g1');putRecord(s,record('b'),'g2');const before=structuredClone(s);
+ mergeGroups(s,['g2','g1'],'합친 이름');const after=structuredClone(s);
+ s.futures.career='바뀐 미래';restoreWork(s,before,after);assert.deepEqual(s.groups,before.groups);assert.equal(s.futures.career,'바뀐 미래');
+ const changed=structuredClone(after);changed.records[0].text='다른 기기 수정';const preserved=structuredClone(changed);
+ assert.throws(()=>restoreWork(changed,before,after));assert.deepEqual(changed,preserved);
+});
