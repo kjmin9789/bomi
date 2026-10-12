@@ -210,3 +210,51 @@ test('같은 제목의 독립 묶음과 제목 변경은 ID를 유지하고 개�
  assert.deepEqual(projectRecords(s)[0].themes,['health']);assert.equal(groupRecords(projectRecords(s)).length,2);
  s.records=s.records.filter(r=>r.groupId!=='g1');assert.deepEqual(validateState(s).groups.map(g=>g.id),['g2']);
 });
+
+test('묶음 합치기와 분리는 기록 내용·식별자·보관 및 꽃 단계를 보존한다',async()=>{
+ const {putRecord,mergeGroups,splitGroup}=await import('../app/model.js');const s=emptyState();
+ putRecord(s,{...record('a'),summary:'요약',saved:true},'g1');
+ putRecord(s,record('b'),'g1');putRecord(s,record('c','2026-10-10',['health']),'g2');
+ const original=s.records.map(({groupId,...r})=>r),flags=activeThemes(projectRecords(s),'2026-10-10');
+ mergeGroups(s,['g1','g2'],'하나의 묶음');
+ assert.equal(s.groups.length,1);assert.deepEqual(s.groups[0].themes,['career','health']);
+ splitGroup(s,'g1',['a'],'분리한 묶음','new');
+ assert.equal(s.groups.length,2);assert.equal(s.records[0].groupId,'new');
+ assert.deepEqual(s.records.map(({groupId,...r})=>r),original);
+ assert.deepEqual(activeThemes(projectRecords(s),'2026-10-10'),flags);
+ assert.deepEqual(validateState(JSON.parse(JSON.stringify(s))),s);
+});
+test('잘못된 합치기·분리는 변경 없이 거절하고 같은 제목도 독립 묶음으로 둔다',async()=>{
+ const {putRecord,mergeGroups,splitGroup}=await import('../app/model.js');const s=emptyState();
+ putRecord(s,record('a'),'g1');putRecord(s,record('b'),'g1');putRecord(s,record('c','2026-10-09'),'g2');
+ for(const run of [()=>mergeGroups(s,['g1'],'제목'),()=>mergeGroups(s,['g1','g2'],'제목'),()=>mergeGroups(s,['g1','missing'],'제목'),()=>splitGroup(s,'g1',[],'제목','new'),()=>splitGroup(s,'g1',['a','b'],'제목','new'),()=>splitGroup(s,'g1',['c'],'제목','new'),()=>splitGroup(s,'g1',['a'],'제목','g2'),()=>splitGroup(s,'g1',['a'],'','new')]){
+  const before=structuredClone(s);assert.throws(run);assert.deepEqual(s,before);
+ }
+ splitGroup(s,'g1',['a'],'동일','new');s.groups.find(g=>g.id==='g1').title='동일';
+ assert.equal(groupRecords(projectRecords(validateState(s))).length,3);
+});
+
+test('기록을 기존 묶음으로 옮기면 내용과 날짜를 보존하고 빈 묶음만 정리한다',async()=>{
+ const {putRecord,moveGroupedRecord}=await import('../app/model.js'),s=emptyState();
+ putRecord(s,{...record('a'),group:'첫 묶음',summary:'요약',saved:true},'g1');
+ putRecord(s,{...record('b','2026-10-10',['health']),group:'받는 묶음'},'g2');
+ const before=structuredClone(s.records[0]);moveGroupedRecord(s,'a','g2');
+ assert.deepEqual(s.records[0],{...before,groupId:'g2'});assert.equal(s.groups.length,1);assert.equal(s.groups[0].title,'받는 묶음');
+ assert.deepEqual(s.groups[0].themes,['health','career']);assert.doesNotThrow(()=>validateState(s));
+ const same=structuredClone(s);assert.throws(()=>moveGroupedRecord(s,'a','g2'));assert.deepEqual(s,same);
+});
+test('묶음 밖으로 꺼낼 때 제목은 기록에서 가져오고 단독 기록은 꺼내지 않는다',async()=>{
+ const {putRecord,moveGroupedRecord}=await import('../app/model.js'),s=emptyState();
+ putRecord(s,{...record('a'),summary:'꺼낸 기록'},'g');putRecord(s,record('b'),'g');
+ moveGroupedRecord(s,'a','','new');assert.equal(s.groups.find(g=>g.id==='new').title,'꺼낸 기록');
+ assert.equal(s.records.find(r=>r.id==='a').groupId,'new');assert.equal(s.records.find(r=>r.id==='b').groupId,'g');
+ const before=structuredClone(s);assert.throws(()=>moveGroupedRecord(s,'a','','another'));assert.deepEqual(s,before);
+});
+test('묶음 실행 취소는 미래 등 다른 설정을 보존하고 이후 기록 변경은 덮어쓰지 않는다',async()=>{
+ const {putRecord,mergeGroups,restoreWork}=await import('../app/model.js'),s=emptyState();
+ putRecord(s,record('a'),'g1');putRecord(s,record('b'),'g2');const before=structuredClone(s);
+ mergeGroups(s,['g2','g1'],'합친 이름');const after=structuredClone(s);
+ s.futures.career='바뀐 미래';restoreWork(s,before,after);assert.deepEqual(s.groups,before.groups);assert.equal(s.futures.career,'바뀐 미래');
+ const changed=structuredClone(after);changed.records[0].text='다른 기기 수정';const preserved=structuredClone(changed);
+ assert.throws(()=>restoreWork(changed,before,after));assert.deepEqual(changed,preserved);
+});

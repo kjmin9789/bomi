@@ -1,5 +1,5 @@
 import {api, CloudStore, enablePush, disablePush, codexRequest, isMobileDevice} from './cloud.js';
-import {projectRecords,putRecord,patchGroup,sortedWorkGroups,newestRecords,groupRecords,ALL_THEMES,THEMES,today,shiftDate,weekStart,activeThemes,themesByDate,flowerStage,validateRecord,emptyState,validateState,weekSummary,demoState,validateRoutine,validateCheckin,routineDue,saveRoutineAnswer,routineTime} from './model.js';
+import {moveGroupedRecord,restoreWork,mergeGroups,splitGroup,projectRecords,putRecord,patchGroup,sortedWorkGroups,newestRecords,groupRecords,ALL_THEMES,THEMES,today,shiftDate,weekStart,activeThemes,themesByDate,flowerStage,validateRecord,emptyState,validateState,weekSummary,demoState,validateRoutine,validateCheckin,routineDue,saveRoutineAnswer,routineTime} from './model.js';
 // Wanted Montage IconClose and IconCheckThick (MIT); see THIRD_PARTY_NOTICES.md.
 const closeIcon = '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path d="M4.86349 4.86346C5.21496 4.51199 5.78481 4.51199 6.13628 4.86346L11.9999 10.7271L17.8634 4.86346C18.2149 4.51199 18.7848 4.51199 19.1362 4.86346C19.4877 5.21493 19.4877 5.78478 19.1362 6.13625L13.2726 11.9999L19.1362 17.8635C19.4877 18.2149 19.4877 18.7848 19.1362 19.1363C18.7848 19.4877 18.2149 19.4877 17.8634 19.1363L11.9999 13.2727L6.13628 19.1363C5.78481 19.4877 5.21496 19.4877 4.86349 19.1363C4.51202 18.7848 4.51202 18.2149 4.86349 17.8635L10.7271 11.9999L4.86349 6.13625C4.51202 5.78478 4.51202 5.21493 4.86349 4.86346Z" fill="currentColor"/></svg>';
 const mobileDevice=isMobileDevice();
@@ -65,7 +65,107 @@ function recordRow(r) {
 function groupTags(items) {
   return `<span class="group-tags">${[...new Set(items.flatMap(r=>r.themes))].map(id=>`<span class="pill" data-theme="${esc(id)}" style="--accent:${id==='money'?'var(--flower-orange)':theme(id).color}">${esc(theme(id).name)}</span>`).join('')}</span>`;
 }
+let arranging=false,pickedItem=null,workUndo=null;
+const expandedGroups=new Set();
+function arrangeList(records) {
+  const ids=new Set(records.map(r=>r.groupId));
+  const groups=data().groups.filter(g=>ids.has(g.id));
+  const handle=(type,id)=>`<button class="drag-handle" data-drag-type="${type}" data-drag-id="${esc(id)}" data-action="arrange-pick" data-type="${type}" data-id="${esc(id)}" aria-label="${type==='group'?'묶음':'기록'} 옮기기" title="드래그하거나 눌러서 옮기기">⠿</button>`;
+  return `<div class="arrange-list"><p class="quiet arrange-help">타일을 겹치면 합쳐져요. 클릭하면 안의 기록을 꺼낼 수 있어요.<br>손잡이를 누르고 목적지를 눌러도 옮길 수 있어요. 변경은 바로 저장돼요.</p>${pickedItem?'<p class="arrange-selection" role="status">놓을 묶음이나 꺼내기 영역을 선택해주세요. <button class="text-button" data-action="arrange-cancel">선택 취소</button></p>':''}${groups.map(g=>{
+    const items=newestRecords(records.filter(r=>r.groupId===g.id)),open=expandedGroups.has(g.id);
+    const source=pickedItem?.type==='group'?pickedItem.id:data().records.find(r=>r.id===pickedItem?.id)?.groupId;
+    return `<section class="arrange-tile" data-drop-group="${esc(g.id)}"><div class="arrange-heading">${handle('group',g.id)}<button class="arrange-open" data-action="arrange-open" data-id="${esc(g.id)}" data-drag-type="group" data-drag-id="${esc(g.id)}" aria-expanded="${open}">${groupTags(items)}<strong>${esc(g.title||'해낸 일')}</strong><span class="count">${items.length}</span><span aria-hidden="true">${open?'⌃':'⌄'}</span></button></div>${pickedItem&&source!==g.id?`<button class="secondary full" data-action="arrange-drop" data-id="${esc(g.id)}">${pickedItem.type==='group'?'이 묶음에 합치기':'이 묶음으로 옮기기'}</button>`:''}${open?`<div class="arrange-items">${items.map(r=>`<div class="arrange-record" data-drag-type="record" data-drag-id="${esc(r.id)}">${handle('record',r.id)}<span>${esc(r.summary||r.text)}</span></div>`).join('')}<button class="text-button" data-action="group-add" data-id="${esc(items[0].id)}">＋ 기록 추가</button></div>`:''}</section>`;
+  }).join('')}<button class="arrange-new" data-drop-group="" data-action="arrange-drop" data-id="">＋ 여기에 놓아 새 묶음으로 꺼내기</button></div>`;
+}
+async function arrangeDrop(item,targetId='') {
+  if(saving||!arranging)return;
+  const source=demo?demoData:state,before={groups:structuredClone(source.groups),records:structuredClone(source.records)};
+  const destination=data().groups.find(g=>g.id===targetId),newId=crypto.randomUUID();
+  const change=s=>{
+    if(item.type==='group')mergeGroups(s,[targetId,item.id],destination?.title||'해낸 일');
+    else moveGroupedRecord(s,item.id,targetId,newId);
+  };
+  try{change(structuredClone(source));}catch(error){toast(error.message);return;}
+  if(!await update(change))return;
+  // Store the intended result, not unrelated records merged in by another device.
+  const after=structuredClone(before);change(after);
+  workUndo={before,after,demo};pickedItem=null;
+  if(item.type==='record')expandedGroups.add(targetId||newId);
+  filter='';render();
+  toast(targetId?'옮겼어요. 실행 취소로 되돌릴 수 있어요.':'새 묶음으로 꺼냈어요. 제목을 눌러 내용을 확인할 수 있어요.');
+}
+async function undoArrange() {
+  if(!workUndo||workUndo.demo!==demo)return;
+  const {before,after}=workUndo;
+  try{restoreWork(structuredClone(demo?demoData:state),before,after);}catch(error){toast(error.message);workUndo=null;render();return;}
+  if(!await update(s=>restoreWork(s,before,after)))return;
+  workUndo=null;pickedItem=null;render();toast('이전 묶음으로 되돌렸어요.');
+}
+let groupDrag=null,suppressDragClick=false,dragScrollFrame=0;
+function dragTarget(x,y) {
+  const el=document.elementFromPoint(x,y)?.closest('[data-drop-group]');
+  const item=groupDrag?.item;if(!el||!item)return null;
+  const sourceId=item.type==='group'?item.id:data().records.find(r=>r.id===item.id)?.groupId;
+  const targetId=el.dataset.dropGroup;
+  if(targetId===sourceId||(!targetId&&(item.type!=='record'||data().records.filter(r=>r.groupId===sourceId).length<2)))return null;
+  return el;
+}
+function paintDrag() {
+  if(!groupDrag?.active)return;
+  const {x,y,ghost}=groupDrag;
+  const target=dragTarget(x,y);
+  document.querySelectorAll('.drop-ready').forEach(el=>el.classList.remove('drop-ready'));
+  target?.classList.add('drop-ready');
+  const title=target?.dataset.dropGroup?data().groups.find(g=>g.id===target.dataset.dropGroup)?.title||'해낸 일':'';
+  ghost.textContent=target?(title?`“${title}”에 ${groupDrag.item.type==='group'?'합치기':'옮기기'}`:'새 묶음으로 꺼내기'):'놓을 위치로 옮겨주세요';
+  ghost.style.left=`${Math.max(8,Math.min(x+12,window.innerWidth-240))}px`;
+  ghost.style.top=`${Math.max(8,Math.min(y+16,window.innerHeight-64))}px`;
+}
+function scrollDrag() {
+  if(!groupDrag?.active)return;
+  const y=groupDrag.y,delta=y<72?-10:y>window.innerHeight-72?10:0;
+  if(delta){window.scrollBy(0,delta);paintDrag();}
+  dragScrollFrame=requestAnimationFrame(scrollDrag);
+}
+function cancelGroupDrag() {
+  const drag=groupDrag;groupDrag=null;cancelAnimationFrame(dragScrollFrame);
+  drag?.ghost?.remove();drag?.element?.classList.remove('drag-source');
+  document.querySelectorAll('.drop-ready').forEach(el=>el.classList.remove('drop-ready'));
+  document.body.classList.remove('group-dragging');
+  if(drag?.element?.hasPointerCapture(drag.pointerId))drag.element.releasePointerCapture(drag.pointerId);
+}
+document.addEventListener('pointerdown',event=>{
+  if(!arranging||saving||dialog.open||event.button!==0||groupDrag)return;
+  const element=event.target.closest('[data-drag-type]');if(!element)return;
+  if(event.pointerType!=='mouse'&&!element.classList.contains('drag-handle'))return;
+  groupDrag={element,pointerId:event.pointerId,item:{type:element.dataset.dragType,id:element.dataset.dragId},startX:event.clientX,startY:event.clientY,x:event.clientX,y:event.clientY,active:false};
+  element.setPointerCapture(event.pointerId);
+});
+document.addEventListener('pointermove',event=>{
+  if(!groupDrag||groupDrag.pointerId!==event.pointerId)return;
+  const drag=groupDrag;drag.x=event.clientX;drag.y=event.clientY;
+  if(!drag.active&&Math.hypot(drag.x-drag.startX,drag.y-drag.startY)<8)return;
+  event.preventDefault();
+  if(!drag.active){
+    drag.active=true;suppressDragClick=true;drag.ghost=document.createElement('div');drag.ghost.className='drag-feedback';drag.ghost.setAttribute('aria-hidden','true');document.body.append(drag.ghost);
+    drag.element.classList.add('drag-source');document.body.classList.add('group-dragging');scrollDrag();
+  }
+  paintDrag();
+},{passive:false});
+document.addEventListener('pointerup',event=>{
+  if(!groupDrag||groupDrag.pointerId!==event.pointerId)return;
+  const {item,active}=groupDrag,target=active?dragTarget(event.clientX,event.clientY):null,targetId=target?.dataset.dropGroup;
+  cancelGroupDrag();
+  if(active){setTimeout(()=>{suppressDragClick=false;},0);if(target)void arrangeDrop(item,targetId);}
+});
+document.addEventListener('pointercancel',()=>{cancelGroupDrag();suppressDragClick=false;});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'){cancelGroupDrag();pickedItem=null;suppressDragClick=false;if(arranging)render();}});
+window.addEventListener('blur',()=>{cancelGroupDrag();suppressDragClick=false;});
+document.addEventListener('click',event=>{if(suppressDragClick){event.preventDefault();event.stopImmediatePropagation();}},true);
+document.addEventListener('dragstart',event=>{if(arranging&&event.target.closest('[data-drag-type]'))event.preventDefault();});
+
 function recordsList(records) {
+  if(arranging)return arrangeList(records);
   if(!records.length) return `<div class="empty"><span>아직 기록이 없어요.</span><p>이미 한 일이 있다면 한 줄만 적어보세요.</p></div>`;
   return sortedWorkGroups(records).map(([name,items])=>`<section class="work-group"><button class="work-group-open" data-action="group" data-id="${esc(items[0].id)}" aria-label="${esc(name||'해낸 일')} ${items.length}개 · 묶음 내역 보기"><span class="work-group-heading">${groupTags(items)}<strong class="work-group-title">${esc(name||'해낸 일')}</strong><span class="count">${items.length}</span><svg class="group-chevron" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M7.86337 3.36272C7.51189 3.7142 7.51189 4.28405 7.86337 4.63552L15.227 11.9991L7.86337 19.3627C7.51189 19.7142 7.51189 20.284 7.86337 20.6355C8.21484 20.987 8.78469 20.987 9.13616 20.6355L17.1362 12.6355C17.4876 12.284 17.4876 11.7142 17.1362 11.3627L9.13616 3.36272C8.78469 3.01125 8.21484 3.01125 7.86337 3.36272Z" fill="currentColor"/></svg></span></button></section>`).join('');
 }
@@ -79,7 +179,7 @@ function groupDetail(id) {
   const items=groupItems(id);if(!items.length)return;
   const record=items[0];
   const themeIds=[...new Set(items.flatMap(r=>r.themes))],initialTheme=themeIds.length===1&&THEMES.some(t=>t.id===themeIds[0])?themeIds[0]:'';
-  showDialog(`${closeButton}<div class="group-title-line"><h2 id="group-title-heading"><span id="group-title-label">${esc(record.group||'해낸 일')}</span> <span class="count">${items.length}</span></h2><button id="group-title-edit" aria-label="묶음 제목 수정">${pencilIcon}</button><div id="group-title-editor" hidden><input id="group-title-input" aria-label="묶음 제목" maxlength="80" value="${esc(record.group||'')}" hidden><button id="group-title-save" class="primary" type="button">저장</button></div></div><fieldset id="group-theme" class="theme-picker"><legend class="sr-only">묶음 테마</legend>${THEMES.map(t=>`<label style="--accent:${t.color}"><input type="radio" name="group-theme" value="${t.id}" ${initialTheme===t.id?'checked':''}><span>${themeIcons[t.id]}${t.name}</span></label>`).join('')}</fieldset><div class="group-history">${items.map(r=>recordRow(r)).join('')}</div>`);
+  showDialog(`${closeButton}<div class="group-title-line"><h2 id="group-title-heading"><span id="group-title-label">${esc(record.group||'해낸 일')}</span> <span class="count">${items.length}</span></h2><button id="group-title-edit" aria-label="묶음 제목 수정">${pencilIcon}</button><div id="group-title-editor" hidden><input id="group-title-input" aria-label="묶음 제목" maxlength="80" value="${esc(record.group||'')}" hidden><button id="group-title-save" class="primary" type="button">저장</button></div></div>${themeIds.length>1?`<p class="quiet" id="group-multiple-themes">현재 테마: ${themeIds.map(id=>esc(theme(id).name)).join(' · ')}<br>아래에서 하나를 고르면 묶음 전체의 테마가 바뀌어요.</p>`:''}<fieldset id="group-theme" class="theme-picker"><legend class="sr-only">묶음 테마</legend>${THEMES.map(t=>`<label style="--accent:${t.color}"><input type="radio" name="group-theme" value="${t.id}" ${initialTheme===t.id?'checked':''}><span>${themeIcons[t.id]}${t.name}</span></label>`).join('')}</fieldset><div class="inline-actions"><button class="primary" data-action="group-add" data-id="${esc(record.id)}">기록 추가</button>${items.length>1?`<button class="secondary" data-action="group-split" data-id="${esc(record.id)}">기록 분리하기</button>`:''}</div><div class="group-history">${items.map(r=>recordRow(r)).join('')}</div>`);
   const input=dialog.querySelector('#group-title-input'),label=dialog.querySelector('#group-title-label'),select=dialog.querySelector('#group-theme');
   const heading=dialog.querySelector('#group-title-heading'),editor=dialog.querySelector('#group-title-editor'),edit=dialog.querySelector('#group-title-edit'),save=dialog.querySelector('#group-title-save');
   let storedName=record.group||'',storedTheme=initialTheme,pending=Promise.resolve(true);
@@ -102,7 +202,7 @@ function groupDetail(id) {
     select.disabled=true;
     pending=pending.then(async()=>{
       const ok=await patch({themes:[value]});
-      if(ok){storedTheme=value;filter='';render();}
+      if(ok){storedTheme=value;dialog.querySelector('#group-multiple-themes')?.remove();filter='';render();}
       paintTheme();select.disabled=false;return ok;
     });
   };
@@ -116,7 +216,20 @@ function daily() {
   const records=data().records.filter(r=>r.date===selected&&(!filter||r.themes.includes(filter)));
   const rest=data().rest.includes(selected), isToday=selected===today();
   return `<div class="page-heading"><div><h1 class="date-heading"><time datetime="${selected}">${selected.replaceAll('-','.')} ${new Intl.DateTimeFormat('ko-KR',{weekday:'long',timeZone:'UTC'}).format(new Date(`${selected}T12:00:00Z`))}</time></h1></div><div class="heading-actions"><button class="secondary" data-action="record">직접 기록하기</button>${mobileDevice?'':`<button class="primary" data-action="codex">${isToday?'오늘':'이날'} 한 일 가져오기</button>`}</div></div><div class="dashboard"><div class="daily-column">${checkinsPanel()}<section class="bloom-card"><div class="bloom-head"><span class="pill">${isToday?'오늘의 꽃':'이날의 꽃'}</span><span class="quiet">${rest?'쉬어가는 날':total?`${total}단계 · ${total}개 테마 실천`:'0단계 · 아직 기록 없음'}</span></div><div class="hero-flower">${flower(flags,'',`${total}개 테마 실천`)}</div><h2>${total?'잘했어요! 해낸 일이 쌓이고 있어요.':rest?'오늘은 편하게 쉬어요.':'이미 한 일이 있나요?'}</h2><p>${total?'아래 도장에서 어떤 일을 했는지 확인해요.':rest?'나중에 기록하고 싶을 때 다시 와도 돼요.':mobileDevice?'직접 기록해보세요.':'Codex에서 가져오거나 직접 기록해보세요.'}</p><div class="stamps">${THEMES.map((t,i)=>`<button class="stamp ${flags[i]?'done':''} ${filter===t.id?'active':''}" data-action="filter" data-theme="${t.id}" style="--accent:${t.color}" aria-pressed="${filter===t.id}" aria-label="${t.name} ${flags[i]?'완료':'기록 없음'}, 기록 보기"><span class="stamp-shape">${flags[i]?stampCheck:themeIcons[t.id]}</span><strong>${t.name}</strong></button>`).join('')}</div></section>
-    <section class="card records"><div class="section-top"><h2>${filter?theme(filter).name+'의 기록':'이날 해낸 일'} <span class="count">${records.length}</span></h2>${filter?'<button class="text-button" data-action="clear-filter">전체 보기</button>':''}${data().records.some(r=>r.date===selected)?'':`<button class="text-button" data-action="rest">${rest?'쉬어감 취소':'오늘은 쉬어가기'}</button>`}</div>${recordsList(records)}</section></div><aside>${calendar()}</aside></div>`;
+    <section class="card records"><div class="section-top"><h2>${filter?theme(filter).name+'의 기록':'이날 해낸 일'} <span class="count">${records.length}</span></h2>${filter?'<button class="text-button" data-action="clear-filter">전체 보기</button>':''}${data().records.some(r=>r.date===selected)?'':`<button class="text-button" data-action="rest">${rest?'쉬어감 취소':'오늘은 쉬어가기'}</button>`}</div>${records.length?`<div class="arrange-toolbar"><button class="${arranging?'primary':'secondary'}" data-action="arrange-toggle">${arranging?'편집 완료':'편집'}</button>${arranging&&workUndo?'<button class="secondary" data-action="arrange-undo">실행 취소</button>':''}</div>`:''}${recordsList(records)}</section></div><aside>${calendar()}</aside></div>`;
+}
+function regroupForm(id) {
+  const items=groupItems(id);if(items.length<2)return;
+  showDialog(`${closeButton}<h2>기록 분리하기</h2><p class="quiet">선택한 기록을 새 묶음으로 옮겨요. 날짜와 테마는 유지돼요.</p><form id="regroup-form"><fieldset class="group-selection"><legend>분리할 기록</legend>${items.map(r=>`<label><input type="checkbox" name="selection" value="${esc(r.id)}"><span>${esc(r.summary||r.text)}</span></label>`).join('')}</fieldset><label for="regroup-title">새 묶음 이름</label><input id="regroup-title" name="title" maxlength="80" required><p class="form-error" role="alert"></p><div class="inline-actions"><button type="button" class="secondary" id="regroup-cancel">취소</button><button class="primary">선택한 기록 분리하기</button></div></form>`);
+  dialog.querySelector('#regroup-cancel').onclick=()=>groupDetail(id);
+  dialog.querySelector('#regroup-form').onsubmit=async event=>{
+    event.preventDefault();
+    const form=event.currentTarget,fd=new FormData(form),ids=fd.getAll('selection'),title=fd.get('title').trim(),newId=crypto.randomUUID();
+    const change=s=>splitGroup(s,items[0].groupId,ids,title,newId);
+    try{change(structuredClone(demo?demoData:state));}catch(error){form.querySelector('.form-error').textContent=error.message;return;}
+    if(!await update(change))return;
+    filter='';render();groupDetail(ids[0]);toast('선택한 기록을 새 묶음으로 옮겼어요.');
+  };
 }
 function futurePage() {
   return `<div class="page-heading"><div><h1>10년 뒤, 어떤 하루일까요?</h1></div></div><form id="future-form"><div class="future-grid">${THEMES.map((t,i)=>`<section class="card future-card"><div class="future-theme"><span class="future-theme-mark" style="color:${t.color}">${themeIcons[t.id]}</span><h2>${t.name}</h2></div><textarea aria-label="${t.name}에서 바라는 나의 모습" id="future-${t.id}" name="${t.id}" maxlength="1000" placeholder="예: ${t.future}">${esc(data().futures[t.id]||'')}</textarea></section>`).join('')}</div><div class="save-row"><button class="primary">내 미래 저장하기</button></div></form>`;
@@ -149,27 +262,29 @@ dialog.addEventListener('cancel',event=>{event.preventDefault();void closeDialog
 dialog.addEventListener('close',()=>{if(groupEditor){const editor=groupEditor;void editor.saveTitle().then(ok=>{if(groupEditor!==editor)return;if(ok)groupEditor=null;else dialog.showModal();});}});
 function showDialog(html) { groupEditor=null; clearTimeout(codexTimer); delete dialog.dataset.codex; dialog.setAttribute('aria-label','보미 기록과 확인'); dialog.innerHTML=html; if(!dialog.open) dialog.showModal(); }
 const closeButton='<button type="button" class="close" data-action="close" aria-label="닫기">×</button>';
-function recordForm(id='',preferred='') {
+function recordForm(id='',preferred='',groupId='') {
   const record=id?data().records.find(r=>r.id===id):null;
   if(id&&!record)return;
+  const group=groupId?data().groups.find(g=>g.id===groupId):null;
+  if(groupId&&!group)return;
   const choices=[...THEMES,...ALL_THEMES.filter(t=>record?.themes.includes(t.id)&&!THEMES.some(active=>active.id===t.id))];
-  showDialog(`${closeButton}<h2>${record?'기록 다듬기':'한 일을 한 줄로 적어볼까요?'}</h2><form id="record-form" data-id="${esc(id)}">${record?'':`<fieldset class="theme-picker"><legend>관련된 테마를 직접 골라주세요</legend>${choices.map(t=>`<label style="--accent:${t.color}"><input type="checkbox" name="themes" value="${t.id}" ${(record?.themes||[preferred]).includes(t.id)?'checked':''}><span>${themeIcons[t.id]||esc(t.mark)}${t.name}</span></label>`).join('')}</fieldset>`}<label for="record-summary">목록에 보일 한 줄 <span class="quiet">선택</span></label><input id="record-summary" name="summary" maxlength="80" placeholder="예: 블로그 글을 임시저장했다" value="${esc(record?.summary||'')}"><label for="record-text">실제로 한 일 · 상세</label><textarea id="record-text" name="text" maxlength="1000" required placeholder="예: 준비하던 글의 제목을 다듬었어">${esc(record?.text||'')}</textarea>${record?'':`<label for="record-group">작업 묶음 <span class="quiet">선택</span></label><input id="record-group" name="group" maxlength="80">`}<div class="form-error" role="alert"></div><div class="inline-actions record-form-actions"><button type="button" class="secondary" id="cancel-record">취소</button><button class="primary" id="save-record" disabled>저장</button></div></form>`);
+  showDialog(`${closeButton}<h2>${record?'기록 다듬기':'한 일을 한 줄로 적어볼까요?'}</h2><form id="record-form" data-id="${esc(id)}" data-group-id="${esc(groupId)}">${group?`<p class="quiet">${esc(group.title||'해낸 일')} · ${esc(fmt(group.date))}</p><div class="chips">${chips(group.themes)}</div>`:''}${record||group?'':`<fieldset class="theme-picker"><legend>관련된 테마를 직접 골라주세요</legend>${choices.map(t=>`<label style="--accent:${t.color}"><input type="checkbox" name="themes" value="${t.id}" ${(record?.themes||[preferred]).includes(t.id)?'checked':''}><span>${themeIcons[t.id]||esc(t.mark)}${t.name}</span></label>`).join('')}</fieldset>`}<label for="record-summary">목록에 보일 한 줄 <span class="quiet">선택</span></label><input id="record-summary" name="summary" maxlength="80" placeholder="예: 블로그 글을 임시저장했다" value="${esc(record?.summary||'')}"><label for="record-text">실제로 한 일 · 상세</label><textarea id="record-text" name="text" maxlength="1000" required placeholder="예: 준비하던 글의 제목을 다듬었어">${esc(record?.text||'')}</textarea>${record||group?'':`<label for="record-group">작업 묶음 <span class="quiet">선택</span></label><input id="record-group" name="group" maxlength="80">`}<div class="form-error" role="alert"></div><div class="inline-actions record-form-actions"><button type="button" class="secondary" id="cancel-record">취소</button><button class="primary" id="save-record" disabled>저장</button></div></form>`);
   const form=dialog.querySelector('#record-form'),save=form.querySelector('#save-record');
   const snapshot=()=>JSON.stringify([...new FormData(form)]);
   const original=snapshot();
   const updateSave=()=>{save.disabled=snapshot()===original;};
   form.addEventListener('input',updateSave);
   form.addEventListener('change',updateSave);
-  form.querySelector('#cancel-record').onclick=()=>{if(record)groupDetail(record.id);else void closeDialog();};
+  form.querySelector('#cancel-record').onclick=()=>{if(record)groupDetail(record.id);else if(group)groupDetail(data().records.find(r=>r.groupId===group.id)?.id);else void closeDialog();};
 }
-async function saveRecord(record) {
+async function saveRecord(record,groupId='') {
     if(saving)return;
     const editing=data().records.some(r=>r.id===record.id);
     const duplicate=data().records.some(r=>r.id!==record.id&&r.date===record.date&&r.text===record.text&&[...r.themes].sort().join() === [...record.themes].sort().join());
     if(duplicate){toast('같은 날짜에 같은 기록이 있어요. 기존 기록을 확인해주세요.');return;}
-    if(!await update(s=>putRecord(s,record)))return;
+    if(!await update(s=>{if(groupId&&!s.groups.some(g=>g.id===groupId))throw new Error('묶음이 변경됐어요. 다시 열어주세요.');putRecord(s,record,groupId);}))return;
     selected=record.date;month=selected.slice(0,7);filter='';page='today';render();
-    if(editing){groupDetail(record.id);toast('수정한 내용을 저장했어요.');return;}
+    if(editing||groupId){groupDetail(record.id);toast(editing?'수정한 내용을 저장했어요.':'묶음에 해낸 일을 추가했어요.');return;}
     const future=record.themes.map(id=>data().futures[id]).find(Boolean);
     showDialog(`${closeButton}<div class="celebration">${flower(activeThemes(data().records,selected),'pop')}<h2>잘했어요! 해낸 일을 기록했어요.</h2><p class="celebration-text">${esc(record.text)}</p><div class="chips">${chips(record.themes)}</div><p class="quiet">${future?`바라던 모습: “${esc(future)}”<br>선택한 테마에 실제 한 일을 남겼어요.`:'직접 해낸 일이에요. 나중에 다시 확인할 수 있어요.'}</p><button class="primary full" data-action="close">내 꽃 보러 가기</button></div>`);
 }
@@ -193,16 +308,23 @@ async function action(event) {
   if(saving){toast('저장 중이에요. 잠시 기다려주세요.');return;}
   if(kind.startsWith('cloud-')){await cloudAction(kind);return;}
   if(kind==='nav'){page=button.dataset.page;render();window.scrollTo({top:0});return;}
-  if(kind==='demo'){demo=!demo;page='today';selected=today();month=selected.slice(0,7);filter='';render();return;}
-  if(kind==='codex-notice-dismiss'){dismissCodexNotice();return;}
+  if(kind==='demo'){arranging=false;workUndo=null;pickedItem=null;expandedGroups.clear();demo=!demo;page='today';selected=today();month=selected.slice(0,7);filter='';render();return;}
   if(kind==='codex'){await collectCodex();return;}
   if(kind==='codex-settings'){await codexSettings();return;}
   if(kind==='record'){recordForm('',filter);return;}
+  if(kind==='arrange-toggle'){arranging=!arranging;expandedGroups.clear();pickedItem=null;render();return;}
+  if(kind==='arrange-undo'){await undoArrange();return;}
+  if(kind==='arrange-open'){expandedGroups.has(id)?expandedGroups.delete(id):expandedGroups.add(id);render();return;}
+  if(kind==='arrange-pick'){pickedItem={type:button.dataset.type,id};render();document.querySelector('[data-action="arrange-drop"]')?.focus();return;}
+  if(kind==='arrange-cancel'){pickedItem=null;render();return;}
+  if(kind==='arrange-drop'){if(pickedItem)await arrangeDrop(pickedItem,id);return;}
   if(kind==='group'){groupDetail(id);return;}
+  if(kind==='group-split'){regroupForm(id);return;}
+  if(kind==='group-add'){const record=data().records.find(r=>r.id===id);if(record)recordForm('','',record.groupId);return;}
   if(kind==='edit'){recordForm(id);return;}
   if(kind==='filter'){filter=filter===button.dataset.theme?'':button.dataset.theme;render();return;}
   if(kind==='clear-filter'){filter='';render();return;}
-  if(kind==='date'){selected=button.dataset.date;month=selected.slice(0,7);page='today';filter='';render();return;}
+  if(kind==='date'){arranging=false;pickedItem=null;expandedGroups.clear();selected=button.dataset.date;month=selected.slice(0,7);page='today';filter='';render();return;}
   if(kind==='month'){const d=new Date(`${month}-01T12:00:00Z`);d.setUTCMonth(d.getUTCMonth()+Number(button.dataset.delta));month=d.toISOString().slice(0,7);render();return;}
   if(kind==='week'){reviewDate=shiftDate(reviewDate,Number(button.dataset.delta));render();return;}
   if(kind==='rest'){if(await update(s=>{s.rest=s.rest.includes(selected)?s.rest.filter(d=>d!==selected):[...s.rest,selected];})){render();toast(data().rest.includes(selected)?'쉬어가는 날로 남겼어요. 기존 기록은 그대로예요.':'쉬어감 표시를 취소했어요.');}return;}
@@ -224,7 +346,7 @@ document.addEventListener('submit',async event=>{
   if(['routine-form','checkin-form'].includes(form.id)){await routineSubmit(form,fd);return;}
   if(form.id==='record-form') {
     if(form.querySelector('#save-record')?.disabled)return;
-    try { const old=data().records.find(r=>r.id===form.dataset.id);const record=validateRecord({id:old?.id||crypto.randomUUID(),date:old?.date||selected,text:fd.get('text'),summary:fd.get('summary'),group:old?old.group:fd.get('group'),result:old?.result||'',themes:old?old.themes:fd.getAll('themes'),saved:old?.saved||false},today(),!!old);await saveRecord(record); }
+    try { const old=data().records.find(r=>r.id===form.dataset.id),group=form.dataset.groupId?data().groups.find(g=>g.id===form.dataset.groupId):null;if(form.dataset.groupId&&!group)throw new Error('묶음이 변경됐어요. 다시 열어주세요.');const record=validateRecord({id:old?.id||crypto.randomUUID(),date:old?.date||group?.date||selected,text:fd.get('text'),summary:fd.get('summary'),group:old?old.group:group?group.title:fd.get('group'),result:old?.result||'',themes:old?old.themes:group?group.themes:fd.getAll('themes'),saved:old?.saved||false},today(),!!old);await saveRecord(record,group?.id); }
     catch(error){form.querySelector('.form-error').textContent=error.message;}return;
   }
   if(form.id==='future-form'){if(await update(s=>{for(const t of THEMES)s.futures[t.id]=fd.get(t.id).trim();})){toast('바라는 미래를 저장했어요.');}return;}
@@ -371,7 +493,7 @@ function showCodexStatus(result) {
 function reviewCodex(job) {
   // Older pending requests remain reviewable without rewriting their source files.
   const groups=job.groups||groupRecords(job.records||[]).map(([title,items])=>({id:`import:${items[0].id}`,title,themes:[...new Set(items.flatMap(r=>r.themes))],items}));
-  showDialog(`${closeButton}<h2>정리한 일을 확인해주세요</h2>${job.window?`<p class="quiet">조회 구간 · ${esc(new Date(job.window.from).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'}))} ~ ${esc(new Date(job.window.to).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'}))}</p>`:''}${job.note?`<p class="footnote">${esc(job.note)}</p>`:''}${job.coverageComplete===false?'<p class="error">일부 내역을 확인하지 못했어요. 다음 요청에서 같은 구간을 다시 확인해요.</p>':''}<form id="codex-review">${groups.map((g,gi)=>`<section class="work-group"><label for="codex-group-${gi}">묶음 제목</label><input id="codex-group-${gi}" name="group-${gi}" maxlength="80" value="${esc(g.title)}"><fieldset class="theme-picker"><legend>묶음 테마</legend>${THEMES.map(t=>`<label style="--accent:${t.color}"><input type="radio" name="group-theme-${gi}" value="${t.id}" ${g.themes.length===1&&g.themes[0]===t.id?'checked':''}><span>${themeIcons[t.id]}${t.name}</span></label>`).join('')}</fieldset>${g.items.map((r,ri)=>{const key=`${gi}-${ri}`;return `<details class="codex-draft"><summary><span class="draft-heading"><strong>${esc(r.summary||r.text)}</strong></span><span class="draft-chevron" aria-hidden="true">⌄</span></summary><div class="draft-body"><label class="draft-include"><input type="checkbox" name="include" value="${key}" checked> 이 일 기록하기</label><label for="codex-summary-${key}">목록에 보일 한 줄 · 선택</label><input id="codex-summary-${key}" name="summary-${key}" maxlength="80" value="${esc(r.summary||'')}"><label for="codex-text-${key}">실제로 한 일 · 상세</label><textarea id="codex-text-${key}" name="text-${key}" maxlength="1000">${esc(r.text)}</textarea></div></details>`;}).join('')}</section>`).join('')}${groups.length?'':'<p class="empty">확인할 수 있는 완료 내역이 없어요.</p>'}<p class="form-error" role="alert"></p><div class="inline-actions">${groups.length?`<button class="primary">확인한 일 기록하기</button>`:''}<button type="button" id="discard-codex" class="secondary">이번 초안 닫기</button></div></form>`);
+  showDialog(`${closeButton}<h2>정리한 일을 확인해주세요</h2>${job.window?`<p class="quiet">조회 구간 · ${esc(new Date(job.window.from).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'}))} ~ ${esc(new Date(job.window.to).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'}))}</p>`:''}${job.note?`<p class="footnote">${esc(job.note)}</p>`:''}${job.coverageComplete===false?'<p class="error">일부 내역을 확인하지 못했어요. 다음 요청에서 같은 구간을 다시 확인해요.</p>':''}<p class="footnote">이미 기록한 일은 내용만 갱신하고 현재 묶음·날짜·테마를 유지해요. 묶음 변경은 기록 목록에서 할 수 있어요.</p><form id="codex-review">${groups.map((g,gi)=>`<section class="work-group"><label for="codex-group-${gi}">묶음 제목</label><input id="codex-group-${gi}" name="group-${gi}" maxlength="80" value="${esc(g.title)}"><fieldset class="theme-picker"><legend>묶음 테마</legend>${THEMES.map(t=>`<label style="--accent:${t.color}"><input type="radio" name="group-theme-${gi}" value="${t.id}" ${g.themes.length===1&&g.themes[0]===t.id?'checked':''}><span>${themeIcons[t.id]}${t.name}</span></label>`).join('')}</fieldset>${g.items.map((r,ri)=>{const key=`${gi}-${ri}`;return `<details class="codex-draft"><summary><span class="draft-heading"><strong>${esc(r.summary||r.text)}</strong></span><span class="draft-chevron" aria-hidden="true">⌄</span></summary><div class="draft-body"><label class="draft-include"><input type="checkbox" name="include" value="${key}" checked> 이 일 기록하기</label><label for="codex-summary-${key}">목록에 보일 한 줄 · 선택</label><input id="codex-summary-${key}" name="summary-${key}" maxlength="80" value="${esc(r.summary||'')}"><label for="codex-text-${key}">실제로 한 일 · 상세</label><textarea id="codex-text-${key}" name="text-${key}" maxlength="1000">${esc(r.text)}</textarea></div></details>`;}).join('')}</section>`).join('')}${groups.length?'':'<p class="empty">확인할 수 있는 완료 내역이 없어요.</p>'}<p class="form-error" role="alert"></p><div class="inline-actions">${groups.length?`<button class="primary">확인한 일 기록하기</button>`:''}<button type="button" id="discard-codex" class="secondary">이번 초안 닫기</button></div></form>`);
   document.querySelector('#discard-codex').onclick=async()=>{try{await codexApi('close',{id:job.id});dialog.close();}catch{toast('연결 상태를 확인해주세요.');}};
   document.querySelector('#codex-review').onsubmit=async event=>{
     event.preventDefault();const f=event.currentTarget,fd=new FormData(f);
@@ -383,7 +505,7 @@ function reviewCodex(job) {
       });
       if(!entries.length)throw new Error('실제로 한 일을 한 개 이상 선택해주세요.');
       if(cloud?.pending().length)throw new Error('이전에 저장하던 입력을 먼저 복구해주세요.');
-      if(!await update(s=>{for(const {groupId,record} of entries){putRecord(s,record,groupId);patchGroup(s,groupId,{title:record.group||'',themes:record.themes});}}))return;
+      if(!await update(s=>{for(const {groupId,record} of entries){const old=s.records.find(r=>r.id===record.id);putRecord(s,record,old?.groupId||groupId);}}))return;
       let acknowledged=true;try{await codexApi('close',{id:job.id});}catch{acknowledged=false;}
       selected=job.date;month=selected.slice(0,7);page='today';filter='';render();
       showDialog(`${closeButton}<div class="celebration">${flower(activeThemes(data().records,selected),'pop')}<h2>해낸 일 ${entries.length}개를 기록했어요.</h2><p>확인한 묶음의 테마를 도장과 꽃에 반영했어요.</p>${acknowledged?'':'<p class="footnote">기록은 저장했지만 요청 종료 확인이 지연됐어요. 다시 확인해도 중복되지 않아요.</p>'}<button class="primary full" data-action="close">내 기록 보기</button></div>`);
@@ -435,6 +557,7 @@ async function cloudAction(kind) {
 let refreshingCloud=false;
 function canRefreshCloud() {
   return cloud&&!demo&&!saving&&!cloud.busy&&!dialog.open&&!document.hidden&&!cloud.pending().length&&
+    !document.querySelector('.arrange-list')&&
     !document.querySelector('form :focus')&&
     ![...document.querySelectorAll('form input,form textarea')].some(el=>el.type==='checkbox'||el.type==='radio'?el.checked!==el.defaultChecked:el.value!==el.defaultValue);
 }

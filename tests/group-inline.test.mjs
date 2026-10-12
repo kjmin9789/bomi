@@ -110,6 +110,42 @@ test('정각이 되면 없던 질문 카드도 꽃 앞에 삽입한다',()=>{
   assert.equal(inserted.position,'afterbegin');assert.match(inserted.html,/checkins/);
 });
 
+test('묶음 안에서 추가하면 묶음 날짜·테마·식별자를 그대로 전달한다',async()=>{
+ let submit,reviewed,target;
+ const group={id:'g',date:'2026-10-09',title:'운동',themes:['health']};
+ const context=vm.createContext({document:{addEventListener:(_,handler)=>submit=handler},FormData:class {get(key){return {text:'걷기',summary:'산책했다',group:'다른 묶음'}[key]}getAll(){return ['career']}},data:()=>({records:[],groups:[group]}),crypto:{randomUUID:()=> 'new'},selected:'2026-10-10',today:()=> '2026-10-12',validateRecord:r=>r,saveRecord:(r,g)=>{reviewed=r;target=g;}});
+ const start=source.indexOf("document.addEventListener('submit',");
+ vm.runInContext(source.slice(start,source.indexOf("document.addEventListener('change',",start)),context);
+ await submit({preventDefault(){},target:{id:'record-form',dataset:{id:'',groupId:'g'},querySelector:()=>null}});
+ assert.equal(target,'g');assert.equal(reviewed.date,group.date);assert.equal(reviewed.group,group.title);assert.deepEqual(reviewed.themes,group.themes);
+});
+
+test('Codex 재가져오기는 직접 합치거나 분리한 묶음을 되돌리지 않는다',async()=>{
+ const {emptyState,putRecord,mergeGroups,splitGroup,validateState}=await import('../app/model.js');
+ const state=emptyState(),base={date:'2026-10-10',text:'원문',result:'',themes:['career']};
+ putRecord(state,{...base,id:'a',group:'원본 A'},'import-a');putRecord(state,{...base,id:'b',group:'원본 B'},'import-b');putRecord(state,{...base,id:'c',group:'원본 B'},'import-b');
+ mergeGroups(state,['import-a','import-b'],'직접 합침');splitGroup(state,'import-a',['c'],'직접 분리','custom');
+ const groups=structuredClone(state.groups),entries=[{groupId:'import-b',record:{...base,id:'c',text:'새 내용',group:'새 AI 제목',themes:['health']}}];
+ const context=vm.createContext({entries,putRecord,s:state});
+ const start=source.indexOf('for(const {groupId,record} of entries)');
+ vm.runInContext(source.slice(start,source.indexOf('}))return;',start)),context);
+ assert.deepEqual(state.groups,groups);assert.equal(state.records.find(r=>r.id==='c').groupId,'custom');assert.equal(state.records.find(r=>r.id==='c').text,'새 내용');assert.doesNotThrow(()=>validateState(state));
+});
+
+test('드롭 저장 실패는 묶음과 실행 취소 상태를 바꾸지 않고 성공 후에만 갱신한다',async()=>{
+ const {emptyState,putRecord,mergeGroups,moveGroupedRecord,restoreWork,projectRecords}=await import('../app/model.js');
+ for(const success of [false,true]){
+  const state=emptyState(),base={date:'2026-10-10',text:'실제 행동',result:'',themes:['career']};
+  putRecord(state,{...base,id:'a',group:'첫 묶음'},'g1');putRecord(state,{...base,id:'b',group:'받는 묶음'},'g2');
+  const before=structuredClone(state);let renders=0;
+  const context=vm.createContext({state,demo:false,saving:false,arranging:true,workUndo:null,pickedItem:{type:'group',id:'g1'},expandedGroups:new Set(),structuredClone,crypto:{randomUUID:()=> 'new'},data:()=>({...state,records:projectRecords(state)}),mergeGroups,moveGroupedRecord,restoreWork,update:async change=>{if(!success)return false;change(state);return true;},render:()=>renders++,toast(){}});
+  vm.runInContext(source.slice(source.indexOf('async function arrangeDrop('),source.indexOf('let groupDrag=')),context);
+  await context.arrangeDrop({type:'group',id:'g1'},'g2');
+  if(success){assert.equal(state.groups.length,1);assert.equal(state.groups[0].title,'받는 묶음');assert.equal(renders,1);await context.undoArrange();assert.deepEqual(state,before);}
+  else{assert.deepEqual(state,before);assert.equal(context.workUndo,null);assert.equal(renders,0);assert.equal(context.pickedItem.id,'g1');}
+ }
+});
+
 test('Codex 안내 닫기는 자동 확인과 늦은 응답을 막고 선택한 재연결로 재개한다',async()=>{
  let resolve,calls=0;const notice={innerHTML:''},saved={};
  const context=vm.createContext({mobileDevice:false,demo:false,document:{hidden:false,querySelector:()=>notice},dialog:{open:false},localStorage:{getItem:()=> '1',setItem:(k,v)=>saved[k]=v},codexApi:()=>{calls++;return new Promise(r=>resolve=r);},esc:String,fmt:String,closeIcon:'<svg></svg>'});
