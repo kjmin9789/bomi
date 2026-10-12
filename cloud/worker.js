@@ -107,7 +107,8 @@ export async function sendReminders(env, now = new Date(), send = fetch) {
     try {
       const subscription = validateSubscription(JSON.parse(row.body));
       const payload = await buildPushPayload({data:JSON.stringify({title:'보미',body:current.body,day}),options:{ttl:300}}, subscription, {subject:env.VAPID_SUBJECT,publicKey:env.VAPID_PUBLIC_KEY,privateKey:env.VAPID_PRIVATE_KEY});
-      const response = await send(subscription.endpoint, {...payload, redirect:'error', signal:AbortSignal.timeout(10000)});
+      // Workers rejects redirect:'error'; manual leaves redirects as failed responses without forwarding keys.
+      const response = await send(subscription.endpoint, {...payload, redirect:'manual', signal:AbortSignal.timeout(10000)});
       if (response.status === 404 || response.status === 410) await env.DB.prepare('DELETE FROM subscriptions WHERE owner = ? AND id = ?').bind(owner,row.id).run();
       await env.DB.prepare('UPDATE deliveries SET status = ? WHERE owner = ? AND subscription_id = ? AND day = ?').bind(response.ok ? 'sent' : 'failed',owner,row.id,day).run();
     } catch {
