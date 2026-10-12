@@ -46,3 +46,7 @@
 !/tests/codex-runner.test.mjs
 
 !/tests/group-inline.test.mjs
+
+!/app/assets/apple-touch-icon.png
+!/app/assets/icon-192.png
+!/app/assets/icon-512.png
