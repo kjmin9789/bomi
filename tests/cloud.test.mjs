@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
+import {readFile, mkdtemp, rm} from 'node:fs/promises';
+import {execFileSync} from 'node:child_process';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import {Miniflare,convertV4MiniflareOptions} from 'miniflare';
 import {generateKeyPair, exportJWK, SignJWT, createLocalJWKSet} from 'jose';
 import {authenticate, handleRequest, saveState, readState, reminderDue, dueNotifications, sendReminders, validateSubscription} from '../cloud/worker.js';
@@ -77,11 +80,55 @@ test('Cloudflare 인증·저장·알림 통합',async t=>{
     const legacy=structuredClone(s);delete legacy.routines;delete legacy.checkins;
     await assert.rejects(saveState(DB,env.ALLOWED_EMAIL,input(3,legacy)),{status:409});
     const response=await handleRequest(await request('/api/push','POST',subscription),pushEnv,resolver);assert.equal(response.status,200);
-    let calls=0;
-    const send=async(url,payload)=>{calls++;assert.equal(url,subscription.endpoint);assert.equal(payload.method,'POST');assert.equal(payload.redirect,'error');return new Response(null,{status:201});};
+    const calls=[];
+    const send=async(url,payload)=>{calls.push({url,payload});return new Response(null,{status:201});};
     await Promise.all([sendReminders(pushEnv,new Date('2026-10-11T11:00:00Z'),send),sendReminders(pushEnv,new Date('2026-10-11T11:00:00Z'),send)]);
-    assert.equal(calls,3);
+    assert.equal(calls.length,3);
+    for(const {url,payload} of calls) {
+      assert.equal(url,subscription.endpoint);assert.equal(payload.method.toUpperCase(),'POST');assert.equal(payload.redirect,'manual');
+    }
+    assert.equal((await DB.prepare("SELECT COUNT(*) AS n FROM deliveries WHERE status = 'sent'").first()).n,3);
     await sendReminders(pushEnv,new Date('2026-10-12T11:00:00Z'),async()=>new Response(null,{status:410}));
     assert.equal((await DB.prepare('SELECT COUNT(*) AS n FROM subscriptions').first()).n,0);
   });
+});
+
+test('Workers 실제 fetch로 정기 푸시 전송, 리다이렉트 차단, 발송 결과와 중복 방지 검증',async t=>{
+  const directory=await mkdtemp(join(tmpdir(),'bomi-push-test-'));
+  t.after(()=>rm(directory,{recursive:true,force:true}));
+  execFileSync(process.execPath,['node_modules/wrangler/bin/wrangler.js','deploy','--dry-run','--outdir',directory],{stdio:'pipe'});
+  const keyPair=await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign','verify']);
+  const privateKey=await crypto.subtle.exportKey('jwk',keyPair.privateKey);
+  const publicKey=Buffer.from(await crypto.subtle.exportKey('raw',keyPair.publicKey)).toString('base64url');
+  const owner='owner@example.com',requests=[];
+  let status=201;
+  const mf=new Miniflare(convertV4MiniflareOptions({
+    modules:true,script:await readFile(join(directory,'worker.js'),'utf8'),compatibilityDate:'2026-10-01',d1Databases:['DB'],
+    bindings:{ALLOWED_EMAIL:owner,VAPID_SUBJECT:`mailto:${owner}`,VAPID_PUBLIC_KEY:publicKey,VAPID_PRIVATE_KEY:privateKey.d},
+    outboundService:async request=>{
+      requests.push({url:request.url,method:request.method,encoding:request.headers.get('content-encoding'),size:(await request.arrayBuffer()).byteLength});
+      return new Response(null,{status,...(status===302?{headers:{Location:'https://untrusted.example/redirect'}}:{})});
+    }
+  }));
+  t.after(()=>mf.dispose());
+  const DB=await mf.getD1Database('DB');
+  await DB.exec((await readFile(new URL('../cloud/schema.sql',import.meta.url),'utf8')).replaceAll('\n',' '));
+  const state=emptyState();
+  state.routines=[{id:'practice',title:'연습 확인',days:[0,1,2],time:'20:00',kind:'activity',enabled:true,themes:[]}];
+  await saveState(DB,owner,{revision:0,mutation:crypto.randomUUID(),state});
+  const endpoint='https://web.push.apple.com/test';
+  const subscription={endpoint,keys:{p256dh:publicKey,auth:Buffer.alloc(16,1).toString('base64url')}};
+  await DB.prepare('INSERT INTO subscriptions(owner,id,body) VALUES (?,?,?)').bind(owner,'test',JSON.stringify(subscription)).run();
+  const worker=await mf.getWorker();
+  const run=day=>worker.scheduled({scheduledTime:+new Date(`2026-10-${day}T11:00:00Z`),cron:'*/5 * * * *'});
+  await run(11);await run(11);
+  assert.equal(requests.length,1,'fetch가 실행되어야 하며 중복 발송하면 안 된다');
+  assert.deepEqual(requests[0],{url:endpoint,method:'POST',encoding:'aes128gcm',size:4096});
+  assert.equal((await DB.prepare('SELECT status FROM deliveries').first()).status,'sent');
+  status=302;await run(12);await run(12);
+  assert.equal(requests.length,2,'리다이렉트 대상이나 실패한 회차에 재전송하지 않는다');
+  assert.ok(requests.every(r=>r.url===endpoint));
+  assert.equal((await DB.prepare('SELECT status FROM deliveries WHERE day = ?').bind('2026-10-12:practice').first()).status,'failed');
+  status=410;await run(13);
+  assert.equal((await DB.prepare('SELECT COUNT(*) AS n FROM subscriptions').first()).n,0);
 });

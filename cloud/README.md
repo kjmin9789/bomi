@@ -34,6 +34,8 @@ Access의 Zero Trust Free 가입 화면에서 카드 등록·약관·초과 사�
 
 푸시 전송은 검증된 Apple·Google·Mozilla HTTPS 목적지로만 허용하고 리다이렉트를 따르지 않는다. 전달 결과가 불명확한 경우 당일 자동 재전송하지 않는다. 실패 여부는 deliveries에 남지만 개인 내용·키는 로그로 출력하지 않는다. 네트워크·운영체제 정책에 따라 수신이 늦거나 누락될 수 있으므로 정확한 시각 전달을 보장하지 않는다.
 
+Workers의 푸시 요청은 `redirect: 'manual'`로 보내고 3xx를 실패로 처리한다. `redirect: 'error'`는 현재 실행 환경에서 전송 전에 예외를 일으킨다. 알림 테스트는 Node의 모의 전송뿐 아니라 Workers 실행 환경의 정기 실행·실제 fetch·발송 결과 저장·중복 방지·리다이렉트 차단을 검증한다. 푸시 서버의 접수 성공과 기기의 실제 수신은 별도로 확인한다.
+
 클라우드 화면의 Codex 가져오기는 현재 컴퓨터에서 실행한 `npm run bridge -- https://보미주소`에 연결한다. 브라우저가 `127.0.0.1:4174`에 직접 요청하며, Worker가 맥을 원격 실행하지 않는다. 확인한 항목만 현재 클라우드 기록에 추가·갱신한다. 컴퓨터별 연결 프로그램 실행과 최신 Chrome의 로컬 연결 권한이 필요하다. 고정 채팅 ID 없이 Codex App Server에서 새 읽기 전용 정리 세션을 시작하고 요청을 자동 전송한다. 선택한 날짜의 모든 개인 채팅과 아카이브를 조사하고 작업별로 나눈 뒤 공통 주제로 묶는다. 상세 절차는 루트 README를 따른다. 전화·음성·유료 AI·회사 자료 수집은 추가하지 않는다. 소스 변경은 PR로 제출하고 소유자가 수동 검토 후 Squash and merge 한다.
 
 공식 참고: [Workers Access](https://developers.cloudflare.com/workers/configuration/cloudflare-access/), [JWT 검증](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/), [Cron](https://developers.cloudflare.com/workers/configuration/cron-triggers/), [아이폰 웹 푸시](https://developer.apple.com/documentation/usernotifications/sending-web-push-notifications-in-web-apps-and-browsers).
