@@ -146,6 +146,28 @@ test('드롭 저장 실패는 묶음과 실행 취소 상태를 바꾸지 않고
  }
 });
 
+test('Codex 안내 닫기는 자동 확인과 늦은 응답을 막고 선택한 재연결로 재개한다',async()=>{
+ let resolve,calls=0;const notice={innerHTML:''},saved={};
+ const context=vm.createContext({mobileDevice:false,demo:false,document:{hidden:false,querySelector:()=>notice},dialog:{open:false},localStorage:{getItem:()=> '1',setItem:(k,v)=>saved[k]=v},codexApi:()=>{calls++;return new Promise(r=>resolve=r);},esc:String,fmt:String,closeIcon:'<svg></svg>'});
+ vm.runInContext(source.slice(source.indexOf('let codexWatch=false;'),source.indexOf('setInterval(refreshCodexNotice')),context);
+ const pending=context.refreshCodexNotice();context.dismissCodexNotice();resolve({job:{date:'2026-10-12',status:'queued'}});await pending;
+ assert.equal(notice.innerHTML,'');assert.equal(saved['bomi.codex.watch'],'0');
+ await context.refreshCodexNotice();assert.equal(calls,1);
+ vm.runInContext('codexWatch=true',context);
+ const resumed=context.refreshCodexNotice();resolve({job:{date:'2026-10-12',status:'ready',records:[]}});await resumed;
+ assert.match(notice.innerHTML,/Codex 연결 안내 닫기/);assert.match(notice.innerHTML,/정리 결과 확인/);
+ context.mobileDevice=true;await context.refreshCodexNotice();assert.equal(calls,2);
+});
+
+test('Codex 안내 X 클릭은 닫기 처리로 연결된다',async()=>{
+ let dismissed=0;
+ const context=vm.createContext({suppressDragClick:false,groupEditor:null,saving:false,dismissCodexNotice:()=>dismissed++});
+ const start=source.indexOf('async function action(event)');
+ vm.runInContext(source.slice(start,source.indexOf("document.addEventListener('click'",start)),context);
+ await context.action({target:{closest:()=>({dataset:{action:'codex-notice-dismiss'}})},preventDefault(){}});
+ assert.equal(dismissed,1);
+});
+
 test('주간 회고는 하루 목록의 묶음 제목 아래 원문과 결과를 표시한다',async()=>{
  const model=await import('../app/model.js');
  const records=[

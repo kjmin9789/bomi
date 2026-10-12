@@ -19,8 +19,8 @@ img.flower{object-fit:contain;aspect-ratio:1;height:auto}.hero-flower img.flower
 .page-heading .date-heading{font-family:"Ownglyph Corncorn",Pretendard,sans-serif;font-weight:400;letter-spacing:-.04em;word-break:keep-all}
 
 .heading-actions{display:flex;align-items:center;gap:16px;flex-shrink:0}.codex-draft{border-bottom:1px solid var(--line)}.codex-draft details{font-size:14px;margin-top:16px}.codex-draft summary{cursor:pointer}.codex-draft input[type=checkbox]{accent-color:var(--primary)}.codex-draft .quiet{font-size:14px}
-@media(max-width:850px){.heading-actions{flex-direction:column;align-items:stretch;gap:8px}}
-@media(max-width:600px){.heading-actions{margin-top:18px}.heading-actions .primary{width:100%}}
+@media(max-width:850px){.page-heading:has(.heading-actions){flex-wrap:wrap}.heading-actions{margin-left:auto;gap:8px}}
+@media(max-width:600px){.heading-actions{margin-top:18px}.heading-actions .primary:only-child{width:100%}}
 
 .codex-draft>summary{display:flex;align-items:center;gap:14px;min-height:76px;padding:15px 4px;list-style:none;border-radius:8px}
 .codex-draft>summary::-webkit-details-marker{display:none}
@@ -83,6 +83,8 @@ dialog #group-theme.theme-picker{margin-top:14px}
 
 /* Wanted Montage medium Switch dimensions; colors follow Bomi tokens. */
 .routine-notification{display:flex;align-items:center;gap:10px;margin-left:auto;font-size:16px;color:var(--muted)}.routine-switch{display:flex;align-items:center;justify-content:center;width:52px;min-height:48px;padding:8px 0;flex-shrink:0;border-radius:12px}.switch-track{display:block;width:52px;height:32px;padding:4px;border-radius:100px;background:var(--disabled);transition:background-color 200ms cubic-bezier(.4,0,.2,1)}.switch-thumb{display:block;width:24px;height:24px;border-radius:50%;background:var(--surface);transition:transform 200ms cubic-bezier(.4,0,.2,1)}.routine-switch[aria-checked=true] .switch-track{background:var(--primary)}.routine-switch[aria-checked=true] .switch-thumb{transform:translateX(20px)}.routine-switch:disabled{cursor:wait;opacity:.5}@media(prefers-reduced-motion:reduce){.switch-track,.switch-thumb{transition:none}}
+
+.codex-banner{display:flex;align-items:center;gap:12px}.codex-banner>div{flex:1}.codex-banner .banner-close{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:44px;height:44px;padding:10px;margin:0;color:var(--muted);border-radius:8px}.banner-close:hover{background:var(--surface-muted)}
 
 .group-selection{border:0;padding:0;margin:20px 0}.group-selection label{display:flex;align-items:flex-start;gap:12px;padding:14px;border:1px solid var(--line);border-radius:10px;cursor:pointer}.group-selection input{flex-shrink:0;width:20px;height:20px;margin:2px 0;accent-color:var(--primary)}.group-selection span{min-width:0;overflow-wrap:anywhere}.group-selection small{display:block;font-size:14px;color:var(--muted);margin-top:4px}.group-selection label:has(input:checked){border-color:var(--primary);background:var(--primary-tint)}
 
