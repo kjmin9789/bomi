@@ -158,3 +158,12 @@ test('Codex 안내 닫기는 자동 확인과 늦은 응답을 막고 선택한 
  assert.match(notice.innerHTML,/Codex 연결 안내 닫기/);assert.match(notice.innerHTML,/정리 결과 확인/);
  context.mobileDevice=true;await context.refreshCodexNotice();assert.equal(calls,2);
 });
+
+test('Codex 안내 X 클릭은 닫기 처리로 연결된다',async()=>{
+ let dismissed=0;
+ const context=vm.createContext({suppressDragClick:false,groupEditor:null,saving:false,dismissCodexNotice:()=>dismissed++});
+ const start=source.indexOf('async function action(event)');
+ vm.runInContext(source.slice(start,source.indexOf("document.addEventListener('click'",start)),context);
+ await context.action({target:{closest:()=>({dataset:{action:'codex-notice-dismiss'}})},preventDefault(){}});
+ assert.equal(dismissed,1);
+});

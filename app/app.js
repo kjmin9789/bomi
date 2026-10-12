@@ -309,6 +309,7 @@ async function action(event) {
   if(kind.startsWith('cloud-')){await cloudAction(kind);return;}
   if(kind==='nav'){page=button.dataset.page;render();window.scrollTo({top:0});return;}
   if(kind==='demo'){arranging=false;workUndo=null;pickedItem=null;expandedGroups.clear();demo=!demo;page='today';selected=today();month=selected.slice(0,7);filter='';render();return;}
+  if(kind==='codex-notice-dismiss'){dismissCodexNotice();return;}
   if(kind==='codex'){await collectCodex();return;}
   if(kind==='codex-settings'){await codexSettings();return;}
   if(kind==='record'){recordForm('',filter);return;}
