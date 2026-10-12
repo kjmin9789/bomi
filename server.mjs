@@ -7,6 +7,9 @@ const allowed = new Map([
   ['/style.css', ['style.css', 'text/css']], ['/app.js', ['app.js', 'text/javascript']],
   ['/model.js', ['model.js', 'text/javascript']], ['/cloud.js', ['cloud.js', 'text/javascript']], ['/icon.svg', ['icon.svg', 'image/svg+xml']],
   ['/assets/OwnglyphCorncorn.ttf', ['assets/OwnglyphCorncorn.ttf', 'font/ttf']],
+  ['/assets/apple-touch-icon.png', ['assets/apple-touch-icon.png', 'image/png']],
+  ['/assets/icon-192.png', ['assets/icon-192.png', 'image/png']],
+  ['/assets/icon-512.png', ['assets/icon-512.png', 'image/png']],
   ['/assets/bomi-logo.png', ['assets/bomi-logo.png', 'image/png']],
   ['/manifest.webmanifest', ['manifest.webmanifest', 'application/manifest+json']]
 ]);
