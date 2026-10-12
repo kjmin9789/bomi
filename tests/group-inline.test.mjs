@@ -145,3 +145,19 @@ test('드롭 저장 실패는 묶음과 실행 취소 상태를 바꾸지 않고
   else{assert.deepEqual(state,before);assert.equal(context.workUndo,null);assert.equal(renders,0);assert.equal(context.pickedItem.id,'g1');}
  }
 });
+
+test('주간 회고는 하루 목록의 묶음 제목 아래 원문과 결과를 표시한다',async()=>{
+ const model=await import('../app/model.js');
+ const records=[
+  {id:'a',groupId:'g',group:'일정 조율',date:'2026-10-12',text:'상세 메모',result:'확인한 결과',themes:['money']},
+  {id:'b',groupId:'g',group:'일정 조율',date:'2026-10-12',text:'추가 메모',result:'',themes:['money']},
+  {id:'c',groupId:'r',group:'수영 완료',date:'2026-10-12',text:'수영 완료',result:'',themes:['health']}
+ ];
+ const context=vm.createContext({...model,data:()=>({records,reviews:{}}),reviewDate:'2026-10-12',fmt:String,esc:String,flower:()=>''});
+ vm.runInContext(source.slice(source.indexOf('function reviewPage()'),source.indexOf('function settingsPage()')),context);
+ const html=context.reviewPage();
+ assert.equal(html.split('<strong>일정 조율</strong>').length-1,1);
+ for(const text of ['상세 메모','추가 메모','확인한 결과'])assert.ok(html.includes(`<p>${text}</p>`));
+ assert.ok(html.includes('<strong>수영 완료</strong>'));
+ assert.ok(!html.includes('<p>수영 완료</p>'));
+});
