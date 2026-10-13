@@ -94,3 +94,5 @@ dialog #group-theme.theme-picker{margin-top:14px}
 .page-heading.mobile-day-heading{display:flex;flex-wrap:nowrap;align-items:center;gap:8px}.mobile-day-heading>div:first-child{min-width:0}.mobile-day-heading .date-heading{white-space:nowrap}.mobile-day-heading .heading-actions{margin-top:0;margin-left:auto}
 
 .record-item>#record-form{width:100%;min-width:0}.group-history>#record-form{margin-top:22px}
+
+.group-dialog-actions{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin:-17px -5px 8px 0}.group-dialog-actions .primary{padding:8px 12px}.group-dialog-actions .close{position:static;min-width:32px}
