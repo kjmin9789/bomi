@@ -41,3 +41,5 @@ Workers의 푸시 요청은 `redirect: 'manual'`로 보내고 3xx를 실패로 �
 공식 참고: [Workers Access](https://developers.cloudflare.com/workers/configuration/cloudflare-access/), [JWT 검증](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/), [Cron](https://developers.cloudflare.com/workers/configuration/cron-triggers/), [아이폰 웹 푸시](https://developer.apple.com/documentation/usernotifications/sending-web-push-notifications-in-web-apps-and-browsers).
 
 브라우저 참고: [Chrome 로컬 네트워크 접근 권한](https://developer.chrome.com/blog/local-network-access?hl=en).
+
+루틴·하루 질문은 `Urgency: high`로 즉시 전달을 요청하고, 오프라인 기기에 보관할 수 있도록 남은 한국 날짜만큼 TTL을 지정합니다. 종전 5분 TTL은 기기가 그동안 연결되지 않으면 알림이 만료될 수 있었습니다. 한국 자정을 넘겨 전날 질문을 새로 보관하지 않으며, 같은 회차 중복 발송 방지는 유지합니다. `sent`는 푸시 서버 접수 성공이며 실제 기기 표시의 증거는 아닙니다.
