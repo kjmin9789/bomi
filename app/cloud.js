@@ -115,8 +115,14 @@ export async function disablePush() {
   await subscription.unsubscribe();
 }
 
+// iPadOS may identify as a Mac; touch support distinguishes it from a desktop Mac.
+export function isMobileDevice(device = globalThis.navigator) {
+  return !!(device?.userAgentData?.mobile || /Android|iPhone|iPad|iPod/i.test(device?.userAgent || '') || (/Macintosh|MacIntel/i.test(`${device?.userAgent || ''} ${device?.platform || ''}`) && device?.maxTouchPoints > 1));
+}
+
 // Only this computer's loopback companion is contacted; credentials never leave the cloud origin.
 export async function codexRequest(action, value, local = false) {
+  if (isMobileDevice()) throw new Error('Codex 가져오기는 컴퓨터에서 사용할 수 있어요.');
   const response = await fetch(`${local ? '' : 'http://127.0.0.1:4174'}/api/codex/${action}`, {
     method:value === undefined ? 'GET' : 'POST', credentials:'omit', redirect:'error', cache:'no-store',
     targetAddressSpace:'loopback', signal:AbortSignal.timeout(value === undefined ? 15000 : 50000),

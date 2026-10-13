@@ -85,7 +85,7 @@ test('Cloudflare 인증·저장·알림 통합',async t=>{
     await Promise.all([sendReminders(pushEnv,new Date('2026-10-11T11:00:00Z'),send),sendReminders(pushEnv,new Date('2026-10-11T11:00:00Z'),send)]);
     assert.equal(calls.length,3);
     for(const {url,payload} of calls) {
-      assert.equal(url,subscription.endpoint);assert.equal(payload.method.toUpperCase(),'POST');assert.equal(payload.redirect,'manual');
+      assert.equal(url,subscription.endpoint);assert.equal(payload.method.toUpperCase(),'POST');assert.equal(payload.redirect,'manual');assert.equal(new Headers(payload.headers).get('urgency'),'high');assert.equal(new Headers(payload.headers).get('ttl'),'14400');
     }
     assert.equal((await DB.prepare("SELECT COUNT(*) AS n FROM deliveries WHERE status = 'sent'").first()).n,3);
     await sendReminders(pushEnv,new Date('2026-10-12T11:00:00Z'),async()=>new Response(null,{status:410}));
@@ -106,7 +106,7 @@ test('Workers 실제 fetch로 정기 푸시 전송, 리다이렉트 차단, 발�
     modules:true,script:await readFile(join(directory,'worker.js'),'utf8'),compatibilityDate:'2026-10-01',d1Databases:['DB'],
     bindings:{ALLOWED_EMAIL:owner,VAPID_SUBJECT:`mailto:${owner}`,VAPID_PUBLIC_KEY:publicKey,VAPID_PRIVATE_KEY:privateKey.d},
     outboundService:async request=>{
-      requests.push({url:request.url,method:request.method,encoding:request.headers.get('content-encoding'),size:(await request.arrayBuffer()).byteLength});
+      requests.push({url:request.url,method:request.method,encoding:request.headers.get('content-encoding'),urgency:request.headers.get('urgency'),ttl:request.headers.get('ttl'),size:(await request.arrayBuffer()).byteLength});
       return new Response(null,{status,...(status===302?{headers:{Location:'https://untrusted.example/redirect'}}:{})});
     }
   }));
@@ -123,12 +123,14 @@ test('Workers 실제 fetch로 정기 푸시 전송, 리다이렉트 차단, 발�
   const run=day=>worker.scheduled({scheduledTime:+new Date(`2026-10-${day}T11:00:00Z`),cron:'*/5 * * * *'});
   await run(11);await run(11);
   assert.equal(requests.length,1,'fetch가 실행되어야 하며 중복 발송하면 안 된다');
-  assert.deepEqual(requests[0],{url:endpoint,method:'POST',encoding:'aes128gcm',size:4096});
+  assert.deepEqual(requests[0],{url:endpoint,method:'POST',encoding:'aes128gcm',urgency:'high',ttl:'14400',size:4096});
   assert.equal((await DB.prepare('SELECT status FROM deliveries').first()).status,'sent');
   status=302;await run(12);await run(12);
   assert.equal(requests.length,2,'리다이렉트 대상이나 실패한 회차에 재전송하지 않는다');
   assert.ok(requests.every(r=>r.url===endpoint));
   assert.equal((await DB.prepare('SELECT status FROM deliveries WHERE day = ?').bind('2026-10-12:practice').first()).status,'failed');
-  status=410;await run(13);
+  status=201;await worker.scheduled({scheduledTime:+new Date('2026-10-13T14:59:59Z'),cron:'*/5 * * * *'});
+  assert.equal(requests.at(-1).ttl,'1','한국 자정을 넘어 전날 질문을 보관하지 않는다');
+  status=410;await worker.scheduled({scheduledTime:+new Date('2026-10-18T11:00:00Z'),cron:'*/5 * * * *'});
   assert.equal((await DB.prepare('SELECT COUNT(*) AS n FROM subscriptions').first()).n,0);
 });

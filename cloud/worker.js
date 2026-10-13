@@ -89,11 +89,14 @@ export function reminderDue(state, now) {
 
 export function dueNotifications(state,now) {
   const day=reminderDue(state,now);
-  return [...(day?[{key:day,body:'혹시 오늘 해낸 일이 있나요? 하나만 남겨볼까요?'}]:[]),...routineDue(state,now).map(r=>({key:r.key,body:r.kind==='bedtime'?`${r.title}: 지난밤 몇 시에 누웠나요?`:`${r.title}, 완료했나요?`}))];
+  return [...(day?[{key:day,body:'혹시 오늘 해낸 일이 있나요? 하나만 남겨볼까요?'}]:[]),...routineDue(state,now).map(r=>({key:r.key,body:`${r.title}, 정해둔 기준대로 해냈나요?`}))];
 }
 export async function sendReminders(env, now = new Date(), send = fetch) {
   if (!env.ALLOWED_EMAIL || !env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY || !env.VAPID_SUBJECT) return;
   const owner = env.ALLOWED_EMAIL.toLowerCase();
+  const date=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul'}).format(now);
+  // Keep an offline device's question until this Korean day ends; do not carry it into tomorrow.
+  const ttl=Math.max(1,Math.ceil((Date.parse(`${date}T00:00:00+09:00`)+86400000-+now)/1000));
   const {state} = await readState(env.DB, owner);
   const questions=dueNotifications(state,now); if(!questions.length)return;
   const {results} = await env.DB.prepare('SELECT id, body FROM subscriptions WHERE owner = ?').bind(owner).all();
@@ -106,7 +109,7 @@ export async function sendReminders(env, now = new Date(), send = fetch) {
     if (!claim.meta.changes) continue;
     try {
       const subscription = validateSubscription(JSON.parse(row.body));
-      const payload = await buildPushPayload({data:JSON.stringify({title:'보미',body:current.body,day}),options:{ttl:300}}, subscription, {subject:env.VAPID_SUBJECT,publicKey:env.VAPID_PUBLIC_KEY,privateKey:env.VAPID_PRIVATE_KEY});
+      const payload = await buildPushPayload({data:JSON.stringify({title:'보미',body:current.body,day}),options:{ttl,urgency:'high'}}, subscription, {subject:env.VAPID_SUBJECT,publicKey:env.VAPID_PUBLIC_KEY,privateKey:env.VAPID_PRIVATE_KEY});
       // Workers rejects redirect:'error'; manual leaves redirects as failed responses without forwarding keys.
       const response = await send(subscription.endpoint, {...payload, redirect:'manual', signal:AbortSignal.timeout(10000)});
       if (response.status === 404 || response.status === 410) await env.DB.prepare('DELETE FROM subscriptions WHERE owner = ? AND id = ?').bind(owner,row.id).run();
@@ -116,8 +119,7 @@ export async function sendReminders(env, now = new Date(), send = fetch) {
       await env.DB.prepare("UPDATE deliveries SET status = 'failed' WHERE owner = ? AND subscription_id = ? AND day = ?").bind(owner,row.id,day).run();
     }
   }
-  const day=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul'}).format(now);
-  await env.DB.prepare("DELETE FROM deliveries WHERE day < date(?, '-30 days')").bind(day).run();
+  await env.DB.prepare("DELETE FROM deliveries WHERE day < date(?, '-30 days')").bind(date).run();
 }
 
 export async function handleRequest(request, env, resolver) {
