@@ -96,3 +96,21 @@ dialog #group-theme.theme-picker{margin-top:14px}
 .record-item>#record-form{width:100%;min-width:0}.group-history>#record-form{margin-top:22px}
 
 .group-dialog-header{display:flex;align-items:center;gap:8px}.group-dialog-header .group-title-line{flex:1;min-width:0;padding-right:0;gap:4px}.group-dialog-header h2{margin:0;white-space:nowrap}.group-dialog-header #group-title-label{min-width:0;overflow:hidden;text-overflow:ellipsis}.group-dialog-header .count{flex-shrink:0}.group-dialog-actions{display:flex;align-items:center;gap:4px;flex-shrink:0}.group-dialog-header #group-title-editor{min-width:0}.group-dialog-actions .primary{padding:8px 12px}.group-dialog-actions .close{position:static;min-width:32px}
+
+/* Routine answers stay on the card, with the same controls for every routine. */
+.checkins-card>.section-top{align-items:flex-start;margin-bottom:8px}
+.checkins-card>.section-top h2{line-height:1.5}
+.checkins-card .text-button{flex-shrink:0}
+.checkin-list{display:grid;gap:12px;margin-top:20px}
+.checkin-item{padding:20px;border-radius:16px;background:var(--canvas)}
+.checkin-item h3{font-size:18px;line-height:1.5;overflow-wrap:anywhere}
+.checkin-question{font-size:16px;margin-top:8px}
+.checkin-criteria{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;color:var(--muted);margin-top:8px}
+.checkin-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}
+.checkin-actions button{min-width:0}
+.checkin-form .form-error:empty{display:none}
+.checkin-form .theme-picker{border:0;padding:0;margin:16px 0;display:flex;flex-wrap:wrap;gap:8px}
+.checkin-form .theme-picker label{margin:0}
+.flower{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-user-drag:none}
+dialog{touch-action:pan-x pan-y}
+dialog input,dialog textarea,dialog select{font-size:16px}

@@ -283,3 +283,15 @@ test('제목 없는 기존 기록은 메모를 제목으로 표시하고 새 기
  putRecord(state,{id:'new',date:'2026-10-10',text:'수영 완료',result:'',themes:['health']});
  assert.equal(projectRecords(state).find(r=>r.id==='new').group,'수영 완료');
 });
+
+
+test('이전 취침 루틴도 시각 없이 예·아니오로 답하며 중복 기록하지 않는다',()=>{
+ const state=emptyState(),date=today();
+ state.routines=[validateRoutine({id:'legacy',title:'등록한 기준',kind:'bedtime',before:'01:00',days:[1],time:'08:00',enabled:true,themes:['health']})];
+ const answer={key:`${date}:legacy`,routineId:'legacy',title:'등록한 기준',date,answer:'done'};
+ saveRoutineAnswer(state,answer,['health']);saveRoutineAnswer(state,answer,['health']);
+ assert.equal(state.records.length,1);assert.equal(state.checkins.length,1);assert.equal(projectRecords(state)[0].date,date);
+ assert.equal('bedtime' in state.checkins[0],false);assert.equal(state.routines[0].before,'01:00');
+ saveRoutineAnswer(state,{...answer,answer:'skip'},[]);assert.equal(state.records.length,0);
+ assert.equal(validateState(state).checkins[0].answer,'skip');
+});
