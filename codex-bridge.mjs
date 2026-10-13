@@ -40,9 +40,7 @@ export function collectionLink(message) {
   return url.href;
 }
 export async function dispatch(url,outputPath) {
-  const execution=await runCollection(new URL(url).searchParams.get('prompt'),outputPath);
-  run('/usr/bin/open',[`codex://threads/${execution.threadId}`],{timeout:10000}).catch(()=>{});
-  return execution;
+  return runCollection(new URL(url).searchParams.get('prompt'),outputPath);
 }
 // Only a hash is retained; the hardware identifier never enters a prompt or log.
 export async function deviceIdentity() {
