@@ -31,7 +31,7 @@ test('개별 수정은 입력된 내용만 바꾸고 날짜·테마·묶음과 �
  const context=vm.createContext({document:{addEventListener:(_,handler)=>submit=handler},FormData:class {get(key){return {text:'수정한 내용',summary:'수정 요약',date:'2026-10-01',group:'다른 묶음',result:'변경 시도'}[key]}getAll(){return ['career']}},data:()=>({records:[old]}),selected:'2026-10-12',today:()=> '2026-10-12',validateRecord:r=>r,saveRecord:r=>reviewed=r});
  const start=source.indexOf("document.addEventListener('submit',");
  vm.runInContext(source.slice(start,source.indexOf("document.addEventListener('change',",start)),context);
- await submit({preventDefault(){},target:{id:'record-form',dataset:{id:'a'},querySelector:()=>null}});
+ await submit({preventDefault(){},target:{classList:{contains:()=>false},id:'record-form',dataset:{id:'a'},querySelector:()=>null}});
  assert.equal(reviewed.text,'수정한 내용');assert.equal(reviewed.summary,'수정 요약');
  for(const key of ['date','themes','group','result','saved'])assert.deepEqual(reviewed[key],old[key]);
 });
@@ -41,7 +41,7 @@ test('새 기록은 선택한 날짜와 처음 고른 테마를 사용한다',as
  const context=vm.createContext({document:{addEventListener:(_,handler)=>submit=handler},FormData:class {get(key){return {text:'걷기',summary:'산책했다',group:'운동'}[key]}getAll(){return ['health']}},data:()=>({records:[]}),crypto:{randomUUID:()=> 'new'},selected:'2026-10-10',today:()=> '2026-10-12',validateRecord:r=>r,saveRecord:r=>reviewed=r});
  const start=source.indexOf("document.addEventListener('submit',");
  vm.runInContext(source.slice(start,source.indexOf("document.addEventListener('change',",start)),context);
- await submit({preventDefault(){},target:{id:'record-form',dataset:{id:''},querySelector:()=>null}});
+ await submit({preventDefault(){},target:{classList:{contains:()=>false},id:'record-form',dataset:{id:''},querySelector:()=>null}});
  assert.equal(reviewed.date,'2026-10-10');assert.equal(reviewed.themes[0],'health');assert.equal(reviewed.result,'');
 });
 
@@ -94,11 +94,11 @@ test('저장 버튼은 변경 시 활성화되고 원래 값으로 복원하면 
 
 
 test('반복 질문은 오늘 미답변이 있을 때만 표시한다',()=>{
-  const context=vm.createContext({selected:'2026-10-12',today:()=> '2026-10-12',data:()=>({checkins:[{date:'2026-10-12',answer:'done'}]}),routineDue:()=>[],esc:s=>s});
-  vm.runInContext(source.slice(source.indexOf('function checkinsPanel()'),source.indexOf('function routineForm(')),context);
+  const context=vm.createContext({selected:'2026-10-12',today:()=> '2026-10-12',data:()=>({routines:[],checkins:[{date:'2026-10-12',answer:'done'}]}),routineThemes:()=>'',routineDue:()=>[],esc:s=>s});
+  vm.runInContext(source.slice(source.indexOf('function checkinAnswerForm('),source.indexOf('function routineForm(')),context);
   assert.equal(vm.runInContext('checkinsPanel()',context),'');
   context.routineDue=()=>[{id:'pending',title:'확인할 일',kind:'activity'}];
-  assert.match(vm.runInContext('checkinsPanel()',context),/답변하기/);
+  assert.match(vm.runInContext('checkinsPanel()',context),/value="done">예<\/button>/);
   context.selected='2026-10-11';assert.equal(vm.runInContext('checkinsPanel()',context),'');
 });
 test('정각이 되면 없던 질문 카드도 꽃 앞에 삽입한다',()=>{
@@ -108,4 +108,27 @@ test('정각이 되면 없던 질문 카드도 꽃 앞에 삽입한다',()=>{
   vm.runInContext(source.slice(start,source.indexOf('setInterval(routineCheck',start)),context);
   vm.runInContext('routineCheck()',context);
   assert.equal(inserted.position,'afterbegin');assert.match(inserted.html,/checkins/);
+});
+
+
+test('모든 루틴은 같은 예·아니오 양식이며 날짜·시각 입력을 요구하지 않는다',()=>{
+ const context=vm.createContext({data:()=>({routines:[{id:'r',themes:['health']}]}),esc:String,routineThemes:()=>'',today:()=> '2026-10-12'});
+ vm.runInContext(source.slice(source.indexOf('function checkinAnswerForm('),source.indexOf('function checkinsPanel()')),context);
+ for(const kind of ['activity','bedtime']) {
+  const html=context.checkinAnswerForm({id:'r',title:'테스트',kind,before:kind==='bedtime'?'01:00':undefined,memo:'등록한 기준'},'2026-10-12');
+  assert.match(html,/value="done">예<\/button>/);assert.match(html,/value="skip">아니오<\/button>/);
+  assert.match(html,/등록한 기준/);assert.doesNotMatch(html,/datetime-local|type="radio"/);
+ }
+});
+
+test('빠른 답변은 저장 성공 때만 닫히며 실패·중복 요청은 보존한다',async()=>{
+ let writes=0,closed=0,rendered=0,fail=false;
+ const buttons=[{disabled:false},{disabled:false}],error={textContent:''};
+ const form={id:'',dataset:{date:'2026-10-12',routine:'r',title:'테스트'},classList:{contains:()=>true},querySelectorAll:()=>buttons,querySelector:()=>error};
+ const context=vm.createContext({saving:false,data:()=>({}),structuredClone,validateCheckin:a=>a,saveRoutineAnswer:()=>{},update:async()=>{writes++;return !fail},dialog:{contains:()=>false,close:()=>closed++},render:()=>rendered++,toast(){}});
+ vm.runInContext(source.slice(source.indexOf('async function routineSubmit('),source.indexOf('const notifiedRoutines')),context);
+ const fd={get:()=> 'done',getAll:()=>['health']};
+ await context.routineSubmit(form,fd);assert.equal(writes,1);assert.equal(rendered,1);assert.equal(closed,0);
+ fail=true;await context.routineSubmit(form,fd);assert.equal(rendered,1);assert.ok(buttons.every(b=>!b.disabled));
+ context.saving=true;await context.routineSubmit(form,fd);assert.equal(writes,2);
 });

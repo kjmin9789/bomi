@@ -83,3 +83,21 @@ dialog #group-theme.theme-picker{margin-top:14px}
 
 /* Wanted Montage medium Switch dimensions; colors follow Bomi tokens. */
 .routine-notification{display:flex;align-items:center;gap:10px;margin-left:auto;font-size:16px;color:var(--muted)}.routine-switch{display:flex;align-items:center;justify-content:center;width:52px;min-height:48px;padding:8px 0;flex-shrink:0;border-radius:12px}.switch-track{display:block;width:52px;height:32px;padding:4px;border-radius:100px;background:var(--disabled);transition:background-color 200ms cubic-bezier(.4,0,.2,1)}.switch-thumb{display:block;width:24px;height:24px;border-radius:50%;background:var(--surface);transition:transform 200ms cubic-bezier(.4,0,.2,1)}.routine-switch[aria-checked=true] .switch-track{background:var(--primary)}.routine-switch[aria-checked=true] .switch-thumb{transform:translateX(20px)}.routine-switch:disabled{cursor:wait;opacity:.5}@media(prefers-reduced-motion:reduce){.switch-track,.switch-thumb{transition:none}}
+
+/* Routine answers stay on the card, with the same controls for every routine. */
+.checkins-card>.section-top{align-items:flex-start;margin-bottom:8px}
+.checkins-card>.section-top h2{line-height:1.5}
+.checkins-card .text-button{flex-shrink:0}
+.checkin-list{display:grid;gap:12px;margin-top:20px}
+.checkin-item{padding:20px;border-radius:16px;background:var(--canvas)}
+.checkin-item h3{font-size:18px;line-height:1.5;overflow-wrap:anywhere}
+.checkin-question{font-size:16px;margin-top:8px}
+.checkin-criteria{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;color:var(--muted);margin-top:8px}
+.checkin-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}
+.checkin-actions button{min-width:0}
+.checkin-form .form-error:empty{display:none}
+.checkin-form .theme-picker{border:0;padding:0;margin:16px 0;display:flex;flex-wrap:wrap;gap:8px}
+.checkin-form .theme-picker label{margin:0}
+.flower{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-user-drag:none}
+dialog{touch-action:pan-x pan-y}
+dialog input,dialog textarea,dialog select{font-size:16px}

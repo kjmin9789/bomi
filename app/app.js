@@ -40,7 +40,7 @@ async function update(change) {
 }
 function flower(active=Array(THEMES.length).fill(false),className='',label='') {
   const stage=flowerStage(active);
-  return `<img class="flower ${className}" src="/assets/flower-stage-${stage}.png" width="1254" height="1254" alt="${esc(label||'')}" ${label?'':'aria-hidden="true"'}>`;
+  return `<img draggable="false" class="flower ${className}" src="/assets/flower-stage-${stage}.png" width="1254" height="1254" alt="${esc(label||'')}" ${label?'':'aria-hidden="true"'}>`;
 }
 
 const chips=ids=>ids.map(id=>`<span class="chip"><i style="background:${theme(id).color}"></i>${theme(id).name}</span>`).join('');
@@ -218,7 +218,7 @@ async function action(event) {
 document.addEventListener('click',action);
 document.addEventListener('submit',async event=>{
   const form=event.target;event.preventDefault();const fd=new FormData(form);
-  if(['routine-form','checkin-form'].includes(form.id)){await routineSubmit(form,fd);return;}
+  if(form.id==='routine-form'||form.classList.contains('checkin-form')){if(event.submitter?.name==='answer')fd.set('answer',event.submitter.value);await routineSubmit(form,fd);return;}
   if(form.id==='record-form') {
     if(form.querySelector('#save-record')?.disabled)return;
     try { const old=data().records.find(r=>r.id===form.dataset.id);const record=validateRecord({id:old?.id||crypto.randomUUID(),date:old?.date||selected,text:fd.get('text'),summary:fd.get('summary'),group:old?old.group:fd.get('group'),result:old?.result||'',themes:old?old.themes:fd.getAll('themes'),saved:old?.saved||false},today(),!!old);await saveRecord(record); }
@@ -252,10 +252,14 @@ function routinePage() {
 function routineThemes(ids=[]) {
   return `<fieldset class="theme-picker"><legend>완료 기록에 연결할 테마</legend>${THEMES.map(t=>`<label><input type="checkbox" name="themes" value="${t.id}" ${ids.includes(t.id)?'checked':''}><span style="--accent:${t.color}">${themeIcons[t.id]}${t.name}</span></label>`).join('')}</fieldset>`;
 }
+function checkinAnswerForm(r,date,old=null) {
+  const themes=data().routines.find(item=>item.id===r.id)?.themes||[];
+  return `<form class="checkin-form" data-routine="${r.id}" data-date="${date}" data-title="${esc(r.title)}"><p class="checkin-question">정해둔 기준대로 해냈나요?</p>${r.memo?`<p class="checkin-criteria">${esc(r.memo)}</p>`:''}${r.before?`<p class="checkin-criteria">등록한 기준 · ${esc(r.before)} 전</p>`:''}${old?`<p class="quiet">이전 답변 · ${old.answer==='skip'?'아니오':old.answer==='done'?'예':'시각 기록'}</p>`:''}${themes.length?themes.map(t=>`<input type="hidden" name="themes" value="${t}">`).join(''):routineThemes()}<div class="checkin-actions"><button class="primary" name="answer" value="done">예</button><button class="secondary" name="answer" value="skip">아니오</button></div><p class="form-error" role="alert"></p></form>`;
+}
 function checkinsPanel() {
   const due=selected===today()?routineDue(data()):[];
   if(!due.length)return '';
-  return `<section class="card" id="checkins"><div class="section-top"><h2>보미가 물어봐요</h2><button class="text-button" data-action="nav" data-page="routines">내 루틴 관리</button></div>${due.map(r=>`<article class="record"><div class="record-body"><h3>${esc(r.title)}</h3><p>${r.kind==='bedtime'?'지난밤 몇 시에 누웠나요?': '할 시간이 되었어요. 했는지 알려주세요.'}</p><button class="secondary" data-action="checkin" data-id="${r.id}">답변하기</button></div></article>`).join('')}<p class="footnote">완료 답변은 보미 기록에 바로 추가돼요. 답변하지 않아도 미완료로 단정하지 않아요.</p></section>`;
+  return `<section class="card checkins-card" id="checkins"><div class="section-top"><h2>해낸 일, 바로 남겨볼까요?</h2><button class="text-button" data-action="nav" data-page="routines">내 루틴 관리</button></div><p class="quiet">작은 실천도 좋아요. 오늘의 나를 칭찬해요.</p><div class="checkin-list">${due.map(r=>`<article class="checkin-item" aria-label="${esc(r.title)}"><h3>${esc(r.title)}</h3>${checkinAnswerForm(r,r.date)}</article>`).join('')}</div><p class="footnote">예를 누르면 바로 기록해요. 아니오여도 괜찮아요.</p></section>`;
 }
 function routineForm(id='') {
   const r=data().routines.find(r=>r.id===id)||{title:'',kind:'activity',days:[0,1,2,3,4,5,6],time:'',enabled:true};
@@ -263,10 +267,9 @@ function routineForm(id='') {
 }
 function checkinForm(id, key='') {
   const old=key?data().checkins.find(a=>a.key===key):null;
-  const r=old?{id:old.routineId,title:old.title,kind:old.before?'bedtime':'activity',before:old.before}:routineDue(data()).find(r=>r.id===id);
+  const r=old?data().routines.find(r=>r.id===old.routineId):routineDue(data()).find(r=>r.id===id);
   if(!r)return;
-  const date=old?.date||today();
-  showDialog(`${closeButton}<h2>${esc(r.title)}</h2><form id="checkin-form" data-routine="${r.id}" data-date="${date}" data-title="${esc(r.title)}" data-before="${r.before||''}">${r.kind==='bedtime'?`<label for="bedtime">지난밤 실제로 누운 날짜와 시각</label><input id="bedtime" type="datetime-local" name="bedtime" value="${old?.bedtime||''}" min="${shiftDate(date,-1)}T00:00" max="${date}T23:59"><p>${esc(shiftDate(date,-1))} 밤부터 ${date} 새벽을 확인해요. 기준은 ${date} ${r.before} 전이에요.</p><label><input type="radio" name="answer" value="bedtime" ${old?.answer!=='skip'?'checked':''}> 시각 기록</label>`:`<label><input type="radio" name="answer" value="done" ${old?.answer!=='skip'?'checked':''}> 했어요</label>`}<label><input type="radio" name="answer" value="skip" ${old?.answer==='skip'?'checked':''}> 오늘은 건너뛸게요</label>${data().routines.find(item=>item.id===r.id)?.themes.length?data().routines.find(item=>item.id===r.id).themes.map(t=>`<input type="hidden" name="themes" value="${t}">`).join(''):routineThemes()}<div class="form-error" role="alert"></div><button class="primary">답변 저장</button></form>`);
+  showDialog(`${closeButton}<h2>${esc(r.title)}</h2>${checkinAnswerForm(r,old?.date||today(),old)}`);
 }
 async function routineAction(kind,id) {
   if(kind==='routine-new'){routineForm();return;}
@@ -276,18 +279,20 @@ async function routineAction(kind,id) {
   if(kind==='checkin-edit')checkinForm('',id);
 }
 async function routineSubmit(form,fd) {
+  if(saving)return;
+  const buttons=[...form.querySelectorAll('button')];buttons.forEach(button=>button.disabled=true);
   try {
     if(form.id==='routine-form') {
       const old=data().routines.find(r=>r.id===form.dataset.id);
-      const r=validateRoutine({id:old?.id||crypto.randomUUID(),title:fd.get('title'),kind:'activity',days:fd.getAll('days').map(Number),time:fd.get('time'),memo:fd.get('memo'),enabled:old?.enabled??true,themes:fd.getAll('themes')});
+      const r=validateRoutine({id:old?.id||crypto.randomUUID(),title:fd.get('title'),kind:old?.kind||'activity',before:old?.before,days:fd.getAll('days').map(Number),time:fd.get('time'),memo:fd.get('memo'),enabled:old?.enabled??true,themes:fd.getAll('themes')});
       if(!await update(s=>{const i=s.routines.findIndex(x=>x.id===r.id);if(i<0)s.routines.push(r);else s.routines[i]=r;}))return;
     } else {
-      const a=validateCheckin({key:`${form.dataset.date}:${form.dataset.routine}`,routineId:form.dataset.routine,date:form.dataset.date,title:form.dataset.title,answer:fd.get('answer'),bedtime:fd.get('bedtime'),before:form.dataset.before});
+      const a=validateCheckin({key:`${form.dataset.date}:${form.dataset.routine}`,routineId:form.dataset.routine,date:form.dataset.date,title:form.dataset.title,answer:fd.get('answer')});
       saveRoutineAnswer(structuredClone(data()),a,fd.getAll('themes'));
       if(!await update(s=>saveRoutineAnswer(s,a,fd.getAll('themes'))))return;
     }
-    dialog.close();render();toast(form.id==='checkin-form'&&fd.get('answer')!=='skip'?'잘했어요! 보미에 바로 기록했어요.':'저장했어요.');
-  } catch(error){form.querySelector('.form-error').textContent=error.message;}
+    if(dialog.contains(form))dialog.close();render();toast(form.classList.contains('checkin-form')?(fd.get('answer')==='done'?'잘했어요! 해낸 일을 오늘의 보미에 남겼어요.':'괜찮아요. 다음 기회에 다시 해봐요.'):'저장했어요.');
+  } catch(error){form.querySelector('.form-error').textContent=error.message;} finally {buttons.forEach(button=>button.disabled=false);}
 }
 const notifiedRoutines=new Set();
 function routineCheck() {
@@ -300,7 +305,7 @@ function routineCheck() {
     // Persist delivery separately from answers; a notification never means completion.
     try {if(localStorage.getItem(`bomi.question.${r.key}`))continue;localStorage.setItem(`bomi.question.${r.key}`,'1');}catch{continue;}
     toast('보미가 물어볼 일이 있어요. 오늘 화면에서 답변해주세요.');
-    if('Notification'in window&&Notification.permission==='granted')try{const n=new Notification('보미',{body:r.kind==='bedtime'?`${r.title}: 지난밤 몇 시에 누웠나요?`:`${r.title}, 완료했나요?`,tag:r.key});n.onclick=()=>{window.focus();checkinForm(r.id);n.close();};}catch{}
+    if('Notification'in window&&Notification.permission==='granted')try{const n=new Notification('보미',{body:`${r.title}, 정해둔 기준대로 해냈나요?`,tag:r.key});n.onclick=()=>{window.focus();checkinForm(r.id);n.close();};}catch{}
   }
 }
 setInterval(routineCheck,30000);
@@ -439,3 +444,8 @@ setInterval(refreshCloudRecords,10000);
 window.addEventListener('focus',refreshCloudRecords);
 document.addEventListener('visibilitychange',refreshCloudRecords);
 dialog.addEventListener('close',refreshCloudRecords);
+
+// Keep illustration gestures from opening native image menus or drag previews.
+for(const type of ['contextmenu','dragstart'])document.addEventListener(type,event=>{if(event.target.closest?.('.flower'))event.preventDefault();});
+for(const type of ['gesturestart','gesturechange'])dialog.addEventListener(type,event=>event.preventDefault(),{passive:false});
+dialog.addEventListener('wheel',event=>{if(event.ctrlKey)event.preventDefault();},{passive:false});
