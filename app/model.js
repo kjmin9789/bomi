@@ -127,7 +127,7 @@ export function mergeGroups(state,ids,title) {
   if(!Array.isArray(ids)||new Set(ids).size!==ids.length||ids.length<2)throw new Error('합칠 묶음을 두 개 이상 골라주세요.');
   const groups=ids.map(id=>state.groups.find(g=>g.id===id));
   if(groups.some(g=>!g)||groups.some(g=>g.date!==groups[0].date))throw new Error('같은 날짜의 묶음만 합칠 수 있어요. 다시 선택해주세요.');
-  const target=validateGroup({...groups[0],title,themes:[...new Set(groups.flatMap(g=>g.themes))]});
+  const target=validateGroup({...groups[0],title});
   if(!target.title)throw new Error('합친 묶음의 이름을 적어주세요.');
   const chosen=new Set(ids);
   state.groups=state.groups.filter(g=>!chosen.has(g.id)||g.id===target.id).map(g=>g.id===target.id?target:g);
@@ -154,7 +154,6 @@ export function moveGroupedRecord(state,recordId,targetId,newId) {
   }
   const target=state.groups.find(g=>g.id===targetId);
   if(!target||target.date!==source.date||target.id===source.id)throw new Error('다른 묶음 위에 놓아주세요.');
-  target.themes=[...new Set([...target.themes,...source.themes])];
   record.groupId=target.id;
   if(!state.records.some(r=>r.groupId===source.id))state.groups=state.groups.filter(g=>g.id!==source.id);
 }
