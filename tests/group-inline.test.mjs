@@ -32,7 +32,7 @@ test('개별 수정은 입력된 내용만 바꾸고 날짜·테마·묶음과 �
  const start=source.indexOf("document.addEventListener('submit',");
  vm.runInContext(source.slice(start,source.indexOf("document.addEventListener('change',",start)),context);
  await submit({preventDefault(){},target:{id:'record-form',dataset:{id:'a'},querySelector:()=>null}});
- assert.equal(reviewed.text,'수정한 내용');assert.equal(reviewed.summary,'수정 요약');
+ assert.equal(reviewed.text,'수정한 내용');assert.equal(reviewed.summary,undefined);
  for(const key of ['date','themes','group','result','saved'])assert.deepEqual(reviewed[key],old[key]);
 });
 
@@ -82,13 +82,13 @@ test('자동 갱신은 새 서버 기록을 반영하되 편집 중이거나 저
 
 test('저장 버튼은 변경 시 활성화되고 원래 값으로 복원하면 다시 비활성화된다',()=>{
  const record={id:'a',summary:'요약',text:'원문',themes:['career']};
- const values={summary:'요약',text:'원문'},handlers={},save={disabled:true},cancel={};let returned;
- const form={querySelector:s=>s==='#save-record'?save:cancel,addEventListener:(name,fn)=>handlers[name]=fn};
- const context=vm.createContext({data:()=>({records:[record]}),THEMES:[],ALL_THEMES:[],showDialog(){},closeButton:'',esc:String,dialog:{querySelector:()=>form},groupDetail:id=>returned=id,FormData:class {[Symbol.iterator](){return Object.entries(values)[Symbol.iterator]();}}});
+ const values={text:'요약'},handlers={},save={disabled:true},cancel={},field={focus(){}},row={dataset:{recordId:'a'}};let returned;
+ const form={querySelector:s=>s==='#save-record'?save:s==='#record-text'?field:cancel,addEventListener:(name,fn)=>handlers[name]=fn};
+ const context=vm.createContext({data:()=>({records:[record]}),THEMES:[],ALL_THEMES:[],showDialog(){},closeButton:'',esc:String,dialog:{querySelector:s=>s==='#record-form'&&!row.innerHTML?null:form,querySelectorAll:()=>[row]},groupDetail:id=>returned=id,FormData:class {[Symbol.iterator](){return Object.entries(values)[Symbol.iterator]();}}});
  vm.runInContext(source.slice(source.indexOf('function recordForm('),source.indexOf('async function saveRecord(')),context);
- context.recordForm('a');assert.equal(save.disabled,true);
+ context.recordForm('a');assert.equal(save.disabled,true);assert.ok(row.innerHTML.includes('>요약</textarea>'));assert.ok(!row.innerHTML.includes('실제로 한 일'));assert.ok(!row.innerHTML.includes('name="summary"'));
  values.text='수정';handlers.input();assert.equal(save.disabled,false);
- values.text='원문';handlers.input();assert.equal(save.disabled,true);
+ values.text='요약';handlers.input();assert.equal(save.disabled,true);
  cancel.onclick();assert.equal(returned,'a');assert.equal(record.text,'원문');
 });
 
@@ -108,4 +108,89 @@ test('정각이 되면 없던 질문 카드도 꽃 앞에 삽입한다',()=>{
   vm.runInContext(source.slice(start,source.indexOf('setInterval(routineCheck',start)),context);
   vm.runInContext('routineCheck()',context);
   assert.equal(inserted.position,'afterbegin');assert.match(inserted.html,/checkins/);
+});
+
+test('묶음 안에서 추가하면 묶음 날짜·테마·식별자를 그대로 전달한다',async()=>{
+ let submit,reviewed,target;
+ const group={id:'g',date:'2026-10-09',title:'운동',themes:['health']};
+ const context=vm.createContext({document:{addEventListener:(_,handler)=>submit=handler},FormData:class {get(key){return {text:'걷기',summary:'산책했다',group:'다른 묶음'}[key]}getAll(){return ['career']}},data:()=>({records:[],groups:[group]}),crypto:{randomUUID:()=> 'new'},selected:'2026-10-10',today:()=> '2026-10-12',validateRecord:r=>r,saveRecord:(r,g)=>{reviewed=r;target=g;}});
+ const start=source.indexOf("document.addEventListener('submit',");
+ vm.runInContext(source.slice(start,source.indexOf("document.addEventListener('change',",start)),context);
+ await submit({preventDefault(){},target:{id:'record-form',dataset:{id:'',groupId:'g'},querySelector:()=>null}});
+ assert.equal(target,'g');assert.equal(reviewed.date,group.date);assert.equal(reviewed.group,group.title);assert.deepEqual(reviewed.themes,group.themes);
+});
+
+test('Codex 재가져오기는 직접 합치거나 분리한 묶음을 되돌리지 않는다',async()=>{
+ const {emptyState,putRecord,mergeGroups,splitGroup,validateState}=await import('../app/model.js');
+ const state=emptyState(),base={date:'2026-10-10',text:'원문',result:'',themes:['career']};
+ putRecord(state,{...base,id:'a',group:'원본 A'},'import-a');putRecord(state,{...base,id:'b',group:'원본 B'},'import-b');putRecord(state,{...base,id:'c',group:'원본 B'},'import-b');
+ mergeGroups(state,['import-a','import-b'],'직접 합침');splitGroup(state,'import-a',['c'],'직접 분리','custom');
+ const groups=structuredClone(state.groups),entries=[{groupId:'import-b',record:{...base,id:'c',text:'새 내용',group:'새 AI 제목',themes:['health']}}];
+ const context=vm.createContext({entries,putRecord,s:state});
+ const start=source.indexOf('for(const {groupId,record} of entries)');
+ vm.runInContext(source.slice(start,source.indexOf('}))return;',start)),context);
+ assert.deepEqual(state.groups,groups);assert.equal(state.records.find(r=>r.id==='c').groupId,'custom');assert.equal(state.records.find(r=>r.id==='c').text,'새 내용');assert.doesNotThrow(()=>validateState(state));
+});
+
+test('드롭 저장 실패는 묶음과 실행 취소 상태를 바꾸지 않고 성공 후에만 갱신한다',async()=>{
+ const {emptyState,putRecord,mergeGroups,moveGroupedRecord,restoreWork,projectRecords}=await import('../app/model.js');
+ for(const success of [false,true]){
+  const state=emptyState(),base={date:'2026-10-10',text:'실제 행동',result:'',themes:['career']};
+  putRecord(state,{...base,id:'a',group:'첫 묶음'},'g1');putRecord(state,{...base,id:'b',group:'받는 묶음'},'g2');
+  const before=structuredClone(state);let renders=0;
+  const context=vm.createContext({state,demo:false,saving:false,arranging:true,workUndo:null,pickedItem:{type:'group',id:'g1'},expandedGroups:new Set(),structuredClone,crypto:{randomUUID:()=> 'new'},data:()=>({...state,records:projectRecords(state)}),mergeGroups,moveGroupedRecord,restoreWork,update:async change=>{if(!success)return false;change(state);return true;},render:()=>renders++,toast(){}});
+  vm.runInContext(source.slice(source.indexOf('async function arrangeDrop('),source.indexOf('let groupDrag=')),context);
+  await context.arrangeDrop({type:'group',id:'g1'},'g2');
+  if(success){assert.equal(state.groups.length,1);assert.equal(state.groups[0].title,'받는 묶음');assert.equal(renders,1);await context.undoArrange();assert.deepEqual(state,before);}
+  else{assert.deepEqual(state,before);assert.equal(context.workUndo,null);assert.equal(renders,0);assert.equal(context.pickedItem.id,'g1');}
+ }
+});
+
+test('Codex 안내 닫기는 자동 확인과 늦은 응답을 막고 선택한 재연결로 재개한다',async()=>{
+ let resolve,calls=0;const notice={innerHTML:''},saved={};
+ const context=vm.createContext({mobileDevice:false,demo:false,document:{hidden:false,querySelector:()=>notice},dialog:{open:false},localStorage:{getItem:()=> '1',setItem:(k,v)=>saved[k]=v},codexApi:()=>{calls++;return new Promise(r=>resolve=r);},esc:String,fmt:String,closeIcon:'<svg></svg>'});
+ vm.runInContext(source.slice(source.indexOf('let codexWatch=false;'),source.indexOf('setInterval(refreshCodexNotice')),context);
+ const pending=context.refreshCodexNotice();context.dismissCodexNotice();resolve({job:{date:'2026-10-12',status:'queued'}});await pending;
+ assert.equal(notice.innerHTML,'');assert.equal(saved['bomi.codex.watch'],'0');
+ await context.refreshCodexNotice();assert.equal(calls,1);
+ vm.runInContext('codexWatch=true',context);
+ const resumed=context.refreshCodexNotice();resolve({job:{date:'2026-10-12',status:'ready',records:[]}});await resumed;
+ assert.match(notice.innerHTML,/Codex 연결 안내 닫기/);assert.match(notice.innerHTML,/정리 결과 확인/);
+ context.mobileDevice=true;await context.refreshCodexNotice();assert.equal(calls,2);
+});
+
+test('Codex 안내 X 클릭은 닫기 처리로 연결된다',async()=>{
+ let dismissed=0;
+ const context=vm.createContext({suppressDragClick:false,groupEditor:null,saving:false,dismissCodexNotice:()=>dismissed++});
+ const start=source.indexOf('async function action(event)');
+ vm.runInContext(source.slice(start,source.indexOf("document.addEventListener('click'",start)),context);
+ await context.action({target:{closest:()=>({dataset:{action:'codex-notice-dismiss'}})},preventDefault(){}});
+ assert.equal(dismissed,1);
+});
+
+test('주간 회고는 하루 목록의 묶음 제목만 표시한다',async()=>{
+ const model=await import('../app/model.js');
+ const records=[
+  {id:'a',groupId:'g',group:'일정 조율',date:'2026-10-12',text:'상세 메모',result:'확인한 결과',themes:['money']},
+  {id:'b',groupId:'g',group:'일정 조율',date:'2026-10-12',text:'추가 메모',result:'',themes:['money']},
+  {id:'c',groupId:'r',group:'수영 완료',date:'2026-10-12',text:'수영 완료',result:'',themes:['health']}
+ ];
+ const context=vm.createContext({...model,data:()=>({records,reviews:{}}),reviewDate:'2026-10-12',fmt:String,esc:String,flower:()=>''});
+ vm.runInContext(source.slice(source.indexOf('function reviewPage()'),source.indexOf('function settingsPage()')),context);
+ const html=context.reviewPage();
+ assert.equal(html.split('<strong>일정 조율</strong>').length-1,1);
+ for(const text of ['상세 메모','추가 메모','확인한 결과'])assert.ok(!html.includes(`<p>${text}</p>`));
+ assert.ok(html.includes('<strong>수영 완료</strong>'));
+ assert.ok(!html.includes('<p>수영 완료</p>'));
+});
+
+
+test('요약 메모 수정은 표시된 한 줄만 바꾸고 숨겨진 원문과 결과를 보존한다',async()=>{
+ const old={id:'a',groupId:'g',date:'2026-10-11',text:'보존할 상세 원문',summary:'기존 메모',result:'기존 결과',group:'묶음',themes:['career']};
+ let submit,saved;
+ const context=vm.createContext({document:{addEventListener:(_,handler)=>submit=handler},FormData:class {get(){return '새 메모'}},data:()=>({records:[old]}),today:()=> '2026-10-13',validateRecord:r=>r,saveRecord:r=>saved=r});
+ const start=source.indexOf("document.addEventListener('submit',");
+ vm.runInContext(source.slice(start,source.indexOf("document.addEventListener('change',",start)),context);
+ await submit({preventDefault(){},target:{id:'record-form',dataset:{id:'a'},querySelector:()=>null}});
+ assert.equal(saved.summary,'새 메모');assert.equal(saved.text,old.text);assert.equal(saved.result,old.result);
 });
