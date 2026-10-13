@@ -95,4 +95,4 @@ dialog #group-theme.theme-picker{margin-top:14px}
 
 .record-item>#record-form{width:100%;min-width:0}.group-history>#record-form{margin-top:22px}
 
-.group-dialog-actions{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin:-17px -5px 8px 0}.group-dialog-actions .primary{padding:8px 12px}.group-dialog-actions .close{position:static;min-width:32px}
+.group-dialog-header{display:flex;align-items:center;gap:8px}.group-dialog-header .group-title-line{flex:1;min-width:0;padding-right:0;gap:4px}.group-dialog-header h2{margin:0;white-space:nowrap}.group-dialog-header #group-title-label{min-width:0;overflow:hidden;text-overflow:ellipsis}.group-dialog-header .count{flex-shrink:0}.group-dialog-actions{display:flex;align-items:center;gap:4px;flex-shrink:0}.group-dialog-header #group-title-editor{min-width:0}.group-dialog-actions .primary{padding:8px 12px}.group-dialog-actions .close{position:static;min-width:32px}
