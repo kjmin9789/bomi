@@ -92,3 +92,5 @@ dialog #group-theme.theme-picker{margin-top:14px}
 .arrange-open{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto}.arrange-open .group-tags{max-width:90px}.arrange-open strong{overflow-wrap:anywhere}@media(max-width:600px){.arrange-open{font-size:14px;gap:6px}.arrange-open .pill{padding:5px 7px}}
 
 .page-heading.mobile-day-heading{display:flex;flex-wrap:nowrap;align-items:center;gap:8px}.mobile-day-heading>div:first-child{min-width:0}.mobile-day-heading .date-heading{white-space:nowrap}.mobile-day-heading .heading-actions{margin-top:0;margin-left:auto}
+
+.record-item>#record-form{width:100%;min-width:0}.group-history>#record-form{margin-top:22px}

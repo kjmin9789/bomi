@@ -32,7 +32,7 @@ test('개별 수정은 입력된 내용만 바꾸고 날짜·테마·묶음과 �
  const start=source.indexOf("document.addEventListener('submit',");
  vm.runInContext(source.slice(start,source.indexOf("document.addEventListener('change',",start)),context);
  await submit({preventDefault(){},target:{id:'record-form',dataset:{id:'a'},querySelector:()=>null}});
- assert.equal(reviewed.text,'수정한 내용');assert.equal(reviewed.summary,'수정 요약');
+ assert.equal(reviewed.text,'수정한 내용');assert.equal(reviewed.summary,undefined);
  for(const key of ['date','themes','group','result','saved'])assert.deepEqual(reviewed[key],old[key]);
 });
 
@@ -82,13 +82,13 @@ test('자동 갱신은 새 서버 기록을 반영하되 편집 중이거나 저
 
 test('저장 버튼은 변경 시 활성화되고 원래 값으로 복원하면 다시 비활성화된다',()=>{
  const record={id:'a',summary:'요약',text:'원문',themes:['career']};
- const values={summary:'요약',text:'원문'},handlers={},save={disabled:true},cancel={};let returned;
- const form={querySelector:s=>s==='#save-record'?save:cancel,addEventListener:(name,fn)=>handlers[name]=fn};
- const context=vm.createContext({data:()=>({records:[record]}),THEMES:[],ALL_THEMES:[],showDialog(){},closeButton:'',esc:String,dialog:{querySelector:()=>form},groupDetail:id=>returned=id,FormData:class {[Symbol.iterator](){return Object.entries(values)[Symbol.iterator]();}}});
+ const values={text:'요약'},handlers={},save={disabled:true},cancel={},field={focus(){}},row={dataset:{recordId:'a'}};let returned;
+ const form={querySelector:s=>s==='#save-record'?save:s==='#record-text'?field:cancel,addEventListener:(name,fn)=>handlers[name]=fn};
+ const context=vm.createContext({data:()=>({records:[record]}),THEMES:[],ALL_THEMES:[],showDialog(){},closeButton:'',esc:String,dialog:{querySelector:s=>s==='#record-form'&&!row.innerHTML?null:form,querySelectorAll:()=>[row]},groupDetail:id=>returned=id,FormData:class {[Symbol.iterator](){return Object.entries(values)[Symbol.iterator]();}}});
  vm.runInContext(source.slice(source.indexOf('function recordForm('),source.indexOf('async function saveRecord(')),context);
- context.recordForm('a');assert.equal(save.disabled,true);
+ context.recordForm('a');assert.equal(save.disabled,true);assert.ok(row.innerHTML.includes('>요약</textarea>'));assert.ok(!row.innerHTML.includes('실제로 한 일'));assert.ok(!row.innerHTML.includes('name="summary"'));
  values.text='수정';handlers.input();assert.equal(save.disabled,false);
- values.text='원문';handlers.input();assert.equal(save.disabled,true);
+ values.text='요약';handlers.input();assert.equal(save.disabled,true);
  cancel.onclick();assert.equal(returned,'a');assert.equal(record.text,'원문');
 });
 
@@ -182,4 +182,15 @@ test('주간 회고는 하루 목록의 묶음 제목만 표시한다',async()=>
  for(const text of ['상세 메모','추가 메모','확인한 결과'])assert.ok(!html.includes(`<p>${text}</p>`));
  assert.ok(html.includes('<strong>수영 완료</strong>'));
  assert.ok(!html.includes('<p>수영 완료</p>'));
+});
+
+
+test('요약 메모 수정은 표시된 한 줄만 바꾸고 숨겨진 원문과 결과를 보존한다',async()=>{
+ const old={id:'a',groupId:'g',date:'2026-10-11',text:'보존할 상세 원문',summary:'기존 메모',result:'기존 결과',group:'묶음',themes:['career']};
+ let submit,saved;
+ const context=vm.createContext({document:{addEventListener:(_,handler)=>submit=handler},FormData:class {get(){return '새 메모'}},data:()=>({records:[old]}),today:()=> '2026-10-13',validateRecord:r=>r,saveRecord:r=>saved=r});
+ const start=source.indexOf("document.addEventListener('submit',");
+ vm.runInContext(source.slice(start,source.indexOf("document.addEventListener('change',",start)),context);
+ await submit({preventDefault(){},target:{id:'record-form',dataset:{id:'a'},querySelector:()=>null}});
+ assert.equal(saved.summary,'새 메모');assert.equal(saved.text,old.text);assert.equal(saved.result,old.result);
 });

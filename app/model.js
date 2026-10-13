@@ -63,6 +63,10 @@ export function validateRecord(record, maxDate=today(), allowLegacy=false) {
 }
 export function projectRecords(state) {
   const groups=new Map((state.groups||[]).map(g=>[g.id,g]));
+  for(const r of state.records) {
+    const g=groups.get(r.groupId);
+    if(g&&(!g.title||g.title==='해낸 일'))groups.set(g.id,{...g,title:(r.summary||r.text).replace(/[\u0000-\u001f]/g,' ').trim().slice(0,80)});
+  }
   const routineItems=new Map();
   for(const r of state.records) {
     if(groups.get(r.groupId)?.title!=='고정 루틴')continue;
@@ -111,7 +115,7 @@ export function putRecord(state,input,groupId) {
   const r=validateRecord(input,today(),true),old=state.records.find(item=>item.id===r.id);
   const id=groupId||old?.groupId||`record:${r.id}`;
   let group=state.groups.find(g=>g.id===id);
-  if(!group){group={id,date:r.date,title:r.group||'',themes:[...r.themes]};state.groups.push(group);}
+  if(!group){group={id,date:r.date,title:r.group||(r.summary||r.text).replace(/[\u0000-\u001f]/g,' ').trim().slice(0,80),themes:[...r.themes]};state.groups.push(group);}
   const item=compactRecord(r,id),i=state.records.findIndex(item=>item.id===r.id);
   if(i<0)state.records.push(item);else state.records[i]=item;
 }

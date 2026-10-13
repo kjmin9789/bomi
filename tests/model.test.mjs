@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {projectRecords,sortedWorkGroups,newestRecords,groupRecords,activeThemes,flowerStage,validateRecord,validateState,emptyState,weekStart,shiftDate,weekSummary,validDate} from '../app/model.js';
+import {putRecord,projectRecords,sortedWorkGroups,newestRecords,groupRecords,activeThemes,flowerStage,validateRecord,validateState,emptyState,weekStart,shiftDate,weekSummary,validDate} from '../app/model.js';
 const record=(id,date='2026-10-10',themes=['career'])=>({id,date,text:'원고 준비',result:'임시저장 원고',themes,saved:false});
 test('테마 중복 기록은 실천 테마 수를 바꾸지 않는다',()=>{
   const once=activeThemes([record('1')],'2026-10-10');
@@ -273,4 +273,13 @@ test('이전 고정 루틴 묶음은 실제 행동을 표시하고 원본과 사
   state.groups[0].title='고정 루틴';
   state.records.push({id:'manual',groupId:state.groups[0].id,text:'직접 추가한 일'});
   assert.equal(projectRecords(state)[0].group,'고정 루틴');
+});
+
+
+test('제목 없는 기존 기록은 메모를 제목으로 표시하고 새 기록은 같은 제목을 저장한다',()=>{
+ const state=emptyState();state.groups=[{id:'g',date:'2026-10-10',title:'',themes:['health']}];state.records=[{id:'a',groupId:'g',summary:'산책 완료',text:'기존 상세 원문'}];
+ assert.equal(projectRecords(state)[0].group,'산책 완료');assert.equal(state.groups[0].title,'');
+ state.groups[0].title='내 제목';assert.equal(projectRecords(state)[0].group,'내 제목');
+ putRecord(state,{id:'new',date:'2026-10-10',text:'수영 완료',result:'',themes:['health']});
+ assert.equal(projectRecords(state).find(r=>r.id==='new').group,'수영 완료');
 });
