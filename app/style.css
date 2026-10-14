@@ -114,3 +114,4 @@ dialog #group-theme.theme-picker{margin-top:14px}
 .flower{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-user-drag:none}
 dialog{touch-action:pan-x pan-y}
 dialog input,dialog textarea,dialog select{font-size:16px}
+@media (any-pointer:coarse){html{touch-action:pan-x pan-y}input,textarea,select{font-size:16px}}

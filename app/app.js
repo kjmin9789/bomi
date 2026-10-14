@@ -583,4 +583,8 @@ dialog.addEventListener('close',refreshCloudRecords);
 // Keep illustration gestures from opening native image menus or drag previews.
 for(const type of ['contextmenu','dragstart'])document.addEventListener(type,event=>{if(event.target.closest?.('.flower'))event.preventDefault();});
 for(const type of ['gesturestart','gesturechange'])dialog.addEventListener(type,event=>event.preventDefault(),{passive:false});
+if(mobileDevice) {
+  for(const type of ['gesturestart','gesturechange'])document.addEventListener(type,event=>event.preventDefault(),{passive:false});
+  document.addEventListener('touchmove',event=>{if(event.touches.length>1)event.preventDefault();},{passive:false});
+}
 dialog.addEventListener('wheel',event=>{if(event.ctrlKey)event.preventDefault();},{passive:false});
