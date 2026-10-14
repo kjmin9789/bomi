@@ -43,3 +43,7 @@ Workers의 푸시 요청은 `redirect: 'manual'`로 보내고 3xx를 실패로 �
 브라우저 참고: [Chrome 로컬 네트워크 접근 권한](https://developer.chrome.com/blog/local-network-access?hl=en).
 
 루틴·하루 질문은 `Urgency: high`로 즉시 전달을 요청하고, 오프라인 기기에 보관할 수 있도록 남은 한국 날짜만큼 TTL을 지정합니다. 종전 5분 TTL은 기기가 그동안 연결되지 않으면 알림이 만료될 수 있었습니다. 한국 자정을 넘겨 전날 질문을 새로 보관하지 않으며, 같은 회차 중복 발송 방지는 유지합니다. `sent`는 푸시 서버 접수 성공이며 실제 기기 표시의 증거는 아닙니다.
+
+## iPhone 홈 화면 아이콘
+
+홈 화면 추가 시 아이콘 요청에 Access 로그인 세션이 전달되지 않을 수 있으므로 `apple-touch-icon`은 이미 공개된 GitHub 저장소의 PNG를 사용한다. URL은 이미지가 포함된 커밋으로 고정하고 CSP도 해당 이미지 URL만 허용한다. 앱과 개인 API의 Access 보호는 유지한다. 아이콘 변경 시 HTML 링크와 CSP를 함께 갱신한다. GitHub 이미지 제공 장애 시 설치 미리보기는 기본 문자 아이콘으로 표시될 수 있다. 기존 설치 아이콘의 자동 갱신과 실제 iPhone 설치 결과는 별도 확인해야 한다.
