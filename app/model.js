@@ -245,7 +245,7 @@ export function saveRoutineAnswer(state,input,themes) {
   let record;
   if(answer.answer!=='skip') {
     const text=answer.answer==='bedtime'?`${answer.bedtime.replace('T',' ')}에 누웠어요.`:`${routine.title} 완료`;
-    record=validateRecord({id:recordId,date:answer.answer==='bedtime'?answer.bedtime.slice(0,10):answer.date,
+    record=validateRecord({id:recordId,date:answer.date,
       text,
       result:'',themes,group:text.replace(/[\u0000-\u001f]/g,' ').slice(0,80),saved:state.records.find(r=>r.id===recordId)?.saved??false});
   }

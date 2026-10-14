@@ -71,7 +71,7 @@ test('자동 갱신은 새 서버 기록을 반영하되 편집 중이거나 저
  let rendered=0,resolve,blocked=false;
  const cloud={revision:1,busy:false,pending:()=>[]};
  const document={hidden:false,querySelector:()=>blocked,querySelectorAll:()=>[],addEventListener(){}};
- const context=vm.createContext({cloud,demo:false,saving:false,dialog:{open:false,addEventListener(){}},document,window:{addEventListener(){}},setInterval(){},api:()=>new Promise(r=>resolve=r),validateState:s=>s,render:()=>rendered++});
+ const context=vm.createContext({cloud,mobileDevice:false,demo:false,saving:false,dialog:{open:false,addEventListener(){}},document,window:{addEventListener(){}},setInterval(){},api:()=>new Promise(r=>resolve=r),validateState:s=>s,render:()=>rendered++});
  vm.runInContext(source.slice(source.indexOf('let refreshingCloud=false;')),context);
  const first=context.refreshCloudRecords();resolve({revision:2,state:{records:['remote']}});await first;
  assert.equal(cloud.revision,2);assert.equal(rendered,1);
@@ -216,4 +216,19 @@ test('빠른 답변은 저장 성공 때만 닫히며 실패·중복 요청은 �
  await context.routineSubmit(form,fd);assert.equal(writes,1);assert.equal(rendered,1);assert.equal(closed,0);
  fail=true;await context.routineSubmit(form,fd);assert.equal(rendered,1);assert.ok(buttons.every(b=>!b.disabled));
  context.saving=true;await context.routineSubmit(form,fd);assert.equal(writes,2);
+});
+
+test('모바일 전체 화면은 핀치만 막고 한 손가락 스크롤과 데스크톱 확대는 유지한다',()=>{
+ for(const mobileDevice of [true,false]){
+  const handlers={};const context=vm.createContext({mobileDevice,document:{addEventListener:(type,fn,options)=>{handlers[type]={fn,options};}}});
+  const start=source.indexOf('if(mobileDevice) {',source.indexOf('// Keep illustration gestures'));
+  vm.runInContext(source.slice(start,source.indexOf("dialog.addEventListener('wheel'",start)),context);
+  if(!mobileDevice){assert.deepEqual(Object.keys(handlers),[]);continue;}
+  let prevented=0;
+  const event=n=>({touches:Array(n).fill({}),preventDefault(){prevented++;}});
+  handlers.touchmove.fn(event(1));assert.equal(prevented,0);
+  handlers.touchmove.fn(event(2));assert.equal(prevented,1);
+  handlers.gesturestart.fn(event(2));handlers.gesturechange.fn(event(2));assert.equal(prevented,3);
+  for(const {options} of Object.values(handlers))assert.equal(options.passive,false);
+ }
 });
