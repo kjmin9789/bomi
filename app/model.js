@@ -216,6 +216,18 @@ export function routineDue(state, now=new Date()) {
   const answered=new Set(state.checkins.map(a=>a.key));
   return state.routines.filter(r=>r.enabled&&r.days.includes(weekday)&&r.time<=time&&!answered.has(routineOccurrence(r,date))).map(r=>({...r,date,key:routineOccurrence(r,date)}));
 }
+// Keep yesterday's unanswered occurrences available through today.
+export function pendingRoutines(state, now=new Date()) {
+  const date=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul'}).format(now);
+  if(state.rest.includes(date))return [];
+  const yesterday=shiftDate(date,-1);
+  return [...routineDue(state,new Date(`${yesterday}T23:59:59+09:00`)),...routineDue(state,now)];
+}
+export function routineReminders(state, now=new Date()) {
+  const date=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul'}).format(now);
+  const time=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Seoul',hour:'2-digit',minute:'2-digit',hour12:false}).format(now);
+  return pendingRoutines(state,now).filter(r=>r.date===date||time>='08:00').map(r=>({...r,deliveryKey:r.date===date?r.key:`${r.key}:morning`,previous:r.date<date}));
+}
 export function validateCheckin(a, now=new Date()) {
   const date=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul'}).format(now);
   if(!a || typeof a.routineId!=='string' || !/^[a-zA-Z0-9-]{1,80}$/.test(a.routineId) || !validDate(a.date) || a.date>date || a.key!==`${a.date}:${a.routineId}` || typeof a.title!=='string' || !a.title.trim() || a.title.length>100 || !['done','skip','bedtime'].includes(a.answer)) throw new Error('답변 내용을 확인해주세요.');
@@ -242,12 +254,13 @@ export function saveRoutineAnswer(state,input,themes) {
   const routine=state.routines.find(r=>r.id===answer.routineId);
   if(!routine)throw new Error('루틴을 찾지 못했어요. 새로고침해주세요.');
   const recordId=`routine-${answer.key}`;
+  const existing=projectRecords(state).find(r=>r.id===recordId);
   let record;
   if(answer.answer!=='skip') {
     const text=answer.answer==='bedtime'?`${answer.bedtime.replace('T',' ')}에 누웠어요.`:`${routine.title} 완료`;
-    record=validateRecord({id:recordId,date:answer.date,
+    record=validateRecord({id:recordId,date:existing?.date??today(),
       text,
-      result:'',themes,group:text.replace(/[\u0000-\u001f]/g,' ').slice(0,80),saved:state.records.find(r=>r.id===recordId)?.saved??false});
+      result:'',themes,group:text.replace(/[\u0000-\u001f]/g,' ').slice(0,80),saved:existing?.saved??false});
   }
   const i=state.checkins.findIndex(a=>a.key===answer.key);
   if(i<0)state.checkins.push(answer);else state.checkins[i]=answer;

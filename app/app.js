@@ -1,5 +1,5 @@
 import {api, CloudStore, enablePush, disablePush, codexRequest, isMobileDevice} from './cloud.js';
-import {moveGroupedRecord,restoreWork,mergeGroups,projectRecords,putRecord,patchGroup,sortedWorkGroups,newestRecords,groupRecords,ALL_THEMES,THEMES,today,shiftDate,weekStart,activeThemes,themesByDate,flowerStage,validateRecord,emptyState,validateState,weekSummary,demoState,validateRoutine,validateCheckin,routineDue,saveRoutineAnswer,routineTime} from './model.js';
+import {moveGroupedRecord,restoreWork,mergeGroups,projectRecords,putRecord,patchGroup,sortedWorkGroups,newestRecords,groupRecords,ALL_THEMES,THEMES,today,shiftDate,weekStart,activeThemes,themesByDate,flowerStage,validateRecord,emptyState,validateState,weekSummary,demoState,validateRoutine,validateCheckin,pendingRoutines,routineReminders,saveRoutineAnswer,routineTime} from './model.js';
 // Wanted Montage IconClose and IconCheckThick (MIT); see THIRD_PARTY_NOTICES.md.
 const closeIcon = '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path d="M4.86349 4.86346C5.21496 4.51199 5.78481 4.51199 6.13628 4.86346L11.9999 10.7271L17.8634 4.86346C18.2149 4.51199 18.7848 4.51199 19.1362 4.86346C19.4877 5.21493 19.4877 5.78478 19.1362 6.13625L13.2726 11.9999L19.1362 17.8635C19.4877 18.2149 19.4877 18.7848 19.1362 19.1363C18.7848 19.4877 18.2149 19.4877 17.8634 19.1363L11.9999 13.2727L6.13628 19.1363C5.78481 19.4877 5.21496 19.4877 4.86349 19.1363C4.51202 18.7848 4.51202 18.2149 4.86349 17.8635L10.7271 11.9999L4.86349 6.13625C4.51202 5.78478 4.51202 5.21493 4.86349 4.86346Z" fill="currentColor"/></svg>';
 const mobileDevice=isMobileDevice();
@@ -378,9 +378,9 @@ function checkinAnswerForm(r,date,old=null) {
   return `<form class="checkin-form" data-routine="${r.id}" data-date="${date}" data-title="${esc(r.title)}"><p class="checkin-question">정해둔 기준대로 해냈나요?</p>${r.memo?`<p class="checkin-criteria">${esc(r.memo)}</p>`:''}${r.before?`<p class="checkin-criteria">등록한 기준 · ${esc(r.before)} 전</p>`:''}${old?`<p class="quiet">이전 답변 · ${old.answer==='skip'?'아니오':old.answer==='done'?'예':'시각 기록'}</p>`:''}${themes.length?themes.map(t=>`<input type="hidden" name="themes" value="${t}">`).join(''):routineThemes()}<div class="checkin-actions"><button class="primary" name="answer" value="done">예</button><button class="secondary" name="answer" value="skip">아니오</button></div><p class="form-error" role="alert"></p></form>`;
 }
 function checkinsPanel() {
-  const due=selected===today()?routineDue(data()):[];
+  const due=selected===today()?pendingRoutines(data()):[];
   if(!due.length)return '';
-  return `<section class="card checkins-card" id="checkins"><div class="section-top"><h2>해낸 일, 바로 남겨볼까요?</h2><button class="text-button" data-action="nav" data-page="routines">내 루틴 관리</button></div><p class="quiet">작은 실천도 좋아요. 오늘의 나를 칭찬해요.</p><div class="checkin-list">${due.map(r=>`<article class="checkin-item" aria-label="${esc(r.title)}"><h3>${esc(r.title)}</h3>${checkinAnswerForm(r,r.date)}</article>`).join('')}</div><p class="footnote">예를 누르면 바로 기록해요. 아니오여도 괜찮아요.</p></section>`;
+  return `<section class="card checkins-card" id="checkins"><div class="section-top"><h2>해낸 일, 바로 남겨볼까요?</h2><button class="text-button" data-action="nav" data-page="routines">내 루틴 관리</button></div><p class="quiet">작은 실천도 좋아요. 오늘의 나를 칭찬해요.</p><div class="checkin-list">${due.map(r=>`<article class="checkin-item" aria-label="${esc(r.title)}"><h3>${esc(r.title)}</h3>${r.date<today()?`<p class="quiet">어제 (${esc(r.date)}) 질문 · 아직 답하지 않았어요.</p>`:''}${checkinAnswerForm(r,r.date)}</article>`).join('')}</div><p class="footnote">예를 누르면 답한 날짜에 기록해요. 아니오여도 괜찮아요.</p></section>`;
 }
 function routineForm(id='') {
   const r=data().routines.find(r=>r.id===id)||{title:'',kind:'activity',days:[0,1,2,3,4,5,6],time:'',enabled:true};
@@ -388,9 +388,9 @@ function routineForm(id='') {
 }
 function checkinForm(id, key='') {
   const old=key?data().checkins.find(a=>a.key===key):null;
-  const r=old?data().routines.find(r=>r.id===old.routineId):routineDue(data()).find(r=>r.id===id);
+  const r=old?data().routines.find(r=>r.id===old.routineId):pendingRoutines(data()).find(r=>key?r.key===key:r.id===id);
   if(!r)return;
-  showDialog(`${closeButton}<h2>${esc(r.title)}</h2>${checkinAnswerForm(r,old?.date||today(),old)}`);
+  showDialog(`${closeButton}<h2>${esc(r.title)}</h2>${checkinAnswerForm(r,old?.date||r.date||today(),old)}`);
 }
 async function routineAction(kind,id) {
   if(kind==='routine-new'){routineForm();return;}
@@ -420,13 +420,13 @@ function routineCheck() {
   if(demo||storageBlocked)return;
   if(page==='today'&&!dialog.open&&!saving){const panel=document.querySelector('#checkins');if(!panel?.contains(document.activeElement)){const html=checkinsPanel();if(panel){if(panel.outerHTML!==html)panel.outerHTML=html;}else if(html)document.querySelector('.daily-column')?.insertAdjacentHTML('afterbegin',html);}}
   if(!localMode)return;
-  for(const r of routineDue(state)) {
-    if(notifiedRoutines.has(r.key))continue;
-    notifiedRoutines.add(r.key);
+  for(const r of routineReminders(state)) {
+    if(notifiedRoutines.has(r.deliveryKey))continue;
+    notifiedRoutines.add(r.deliveryKey);
     // Persist delivery separately from answers; a notification never means completion.
-    try {if(localStorage.getItem(`bomi.question.${r.key}`))continue;localStorage.setItem(`bomi.question.${r.key}`,'1');}catch{continue;}
+    try {if(localStorage.getItem(`bomi.question.${r.deliveryKey}`))continue;localStorage.setItem(`bomi.question.${r.deliveryKey}`,'1');}catch{continue;}
     toast('보미가 물어볼 일이 있어요. 오늘 화면에서 답변해주세요.');
-    if('Notification'in window&&Notification.permission==='granted')try{const n=new Notification('보미',{body:`${r.title}, 정해둔 기준대로 해냈나요?`,tag:r.key});n.onclick=()=>{window.focus();checkinForm(r.id);n.close();};}catch{}
+    if('Notification'in window&&Notification.permission==='granted')try{const n=new Notification('보미',{body:`${r.previous?'어제 ':''}${r.title}, 정해둔 기준대로 해냈나요?`,tag:r.deliveryKey});n.onclick=()=>{window.focus();checkinForm(r.id,r.key);n.close();};}catch{}
   }
 }
 setInterval(routineCheck,30000);

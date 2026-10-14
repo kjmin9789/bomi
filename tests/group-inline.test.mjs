@@ -93,12 +93,13 @@ test('저장 버튼은 변경 시 활성화되고 원래 값으로 복원하면 
 });
 
 
-test('반복 질문은 오늘 미답변이 있을 때만 표시한다',()=>{
-  const context=vm.createContext({selected:'2026-10-12',today:()=> '2026-10-12',data:()=>({routines:[],checkins:[{date:'2026-10-12',answer:'done'}]}),routineThemes:()=>'',routineDue:()=>[],esc:s=>s});
+test('미답변 질문은 오늘 화면에 표시하고 어제 회차를 구분한다',()=>{
+  const context=vm.createContext({selected:'2026-10-12',today:()=> '2026-10-12',data:()=>({routines:[],checkins:[{date:'2026-10-12',answer:'done'}]}),routineThemes:()=>'',pendingRoutines:()=>[],esc:s=>s});
   vm.runInContext(source.slice(source.indexOf('function checkinAnswerForm('),source.indexOf('function routineForm(')),context);
   assert.equal(vm.runInContext('checkinsPanel()',context),'');
-  context.routineDue=()=>[{id:'pending',title:'확인할 일',kind:'activity'}];
+  context.pendingRoutines=()=>[{id:'pending',title:'확인할 일',kind:'activity',date:'2026-10-11'}];
   assert.match(vm.runInContext('checkinsPanel()',context),/value="done">예<\/button>/);
+  assert.match(vm.runInContext('checkinsPanel()',context),/어제 \(2026-10-11\)/);
   context.selected='2026-10-11';assert.equal(vm.runInContext('checkinsPanel()',context),'');
 });
 test('정각이 되면 없던 질문 카드도 꽃 앞에 삽입한다',()=>{
@@ -231,4 +232,13 @@ test('모바일 전체 화면은 핀치만 막고 한 손가락 스크롤과 데
   handlers.gesturestart.fn(event(2));handlers.gesturechange.fn(event(2));assert.equal(prevented,3);
   for(const {options} of Object.values(handlers))assert.equal(options.passive,false);
  }
+});
+
+
+test('아침 알림은 같은 루틴의 오늘 질문 대신 어제 회차를 연다',()=>{
+ let html;
+ const context=vm.createContext({data:()=>({checkins:[]}),pendingRoutines:()=>[{id:'practice',key:'2026-10-12:practice',date:'2026-10-12',title:'연습'},{id:'practice',key:'2026-10-13:practice',date:'2026-10-13',title:'연습'}],today:()=> '2026-10-13',showDialog:s=>html=s,closeButton:'',esc:String,checkinAnswerForm:(r,date)=>date});
+ vm.runInContext(source.slice(source.indexOf('function checkinForm('),source.indexOf('async function routineAction(')),context);
+ context.checkinForm('practice','2026-10-12:practice');
+ assert.match(html,/2026-10-12/);assert.doesNotMatch(html,/2026-10-13/);
 });

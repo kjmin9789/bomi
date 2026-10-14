@@ -125,8 +125,14 @@ test('Workers 실제 fetch로 정기 푸시 전송, 리다이렉트 차단, 발�
   assert.equal(requests.length,1,'fetch가 실행되어야 하며 중복 발송하면 안 된다');
   assert.deepEqual(requests[0],{url:endpoint,method:'POST',encoding:'aes128gcm',urgency:'high',ttl:'14400',size:4096});
   assert.equal((await DB.prepare('SELECT status FROM deliveries').first()).status,'sent');
+  await worker.scheduled({scheduledTime:+new Date('2026-10-12T07:59:00+09:00'),cron:'*/5 * * * *'});
+  assert.equal(requests.length,1,'08시 전에는 전날 재알림을 보내지 않는다');
+  for(let i=0;i<2;i++)await worker.scheduled({scheduledTime:+new Date('2026-10-12T08:00:00+09:00'),cron:'*/5 * * * *'});
+  assert.equal(requests.length,2,'밤에 발송했어도 미답변이면 아침에 한 번만 재알림한다');
+  assert.equal((await DB.prepare('SELECT status FROM deliveries WHERE day = ?').bind('2026-10-11:practice:morning').first()).status,'sent');
+  assert.equal(requests[1].ttl,'57600');
   status=302;await run(12);await run(12);
-  assert.equal(requests.length,2,'리다이렉트 대상이나 실패한 회차에 재전송하지 않는다');
+  assert.equal(requests.length,3,'리다이렉트 대상이나 실패한 회차에 재전송하지 않는다');
   assert.ok(requests.every(r=>r.url===endpoint));
   assert.equal((await DB.prepare('SELECT status FROM deliveries WHERE day = ?').bind('2026-10-12:practice').first()).status,'failed');
   status=201;await worker.scheduled({scheduledTime:+new Date('2026-10-13T14:59:59Z'),cron:'*/5 * * * *'});

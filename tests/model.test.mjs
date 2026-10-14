@@ -309,3 +309,44 @@ test('이전 취침 루틴도 시각 없이 예·아니오로 답하며 중복 �
  saveRoutineAnswer(state,{...answer,answer:'skip'},[]);assert.equal(state.records.length,0);
  assert.equal(validateState(state).checkins[0].answer,'skip');
 });
+
+test('밤의 미답변은 다음날 남고 08시부터 별도 회차로 재알림한다',async()=>{
+ const {pendingRoutines,routineReminders}=await import('../app/model.js');
+ const state=emptyState();
+ state.routines=[validateRoutine({id:'practice',title:'연습',kind:'activity',days:[1],time:'23:55',enabled:true,themes:['career']})];
+ const at=time=>new Date(`2026-10-13T${time}:00+09:00`);
+ assert.deepEqual(pendingRoutines(state,at('07:59')).map(r=>r.key),['2026-10-12:practice']);
+ assert.equal(routineReminders(state,at('07:59')).length,0);
+ assert.equal(routineReminders(state,at('08:00'))[0].deliveryKey,'2026-10-12:practice:morning');
+ assert.equal(routineReminders(state,at('23:59')).length,1);
+ assert.equal(pendingRoutines(state,new Date('2026-10-14T08:00:00+09:00')).length,0);
+ for(const answer of ['done','skip']){
+  state.checkins=[{key:'2026-10-12:practice',answer}];
+  assert.equal(pendingRoutines(state,at('08:00')).length,0);
+  assert.equal(routineReminders(state,at('08:00')).length,0);
+ }
+ state.checkins=[];state.rest=['2026-10-13'];assert.equal(pendingRoutines(state,at('08:00')).length,0);
+ state.rest=['2026-10-12'];assert.equal(pendingRoutines(state,at('08:00')).length,0);
+ state.rest=[];state.routines[0].enabled=false;assert.equal(pendingRoutines(state,at('08:00')).length,0);
+});
+test('전날 질문 답변은 회차를 보존하면서 답한 날짜에 한 번만 기록한다',()=>{
+ const state=emptyState(),date=shiftDate(today(),-1);
+ state.routines=[validateRoutine({id:'practice',title:'연습',kind:'activity',days:[1],time:'23:55',enabled:true,themes:['career']})];
+ const answer={key:`${date}:practice`,routineId:'practice',date,title:'연습',answer:'done'};
+ saveRoutineAnswer(state,answer,['career']);saveRoutineAnswer(state,answer,['career']);
+ assert.equal(state.checkins[0].date,date);assert.equal(state.records.length,1);
+ assert.equal(projectRecords(state)[0].date,today());assert.equal(flowerStage(activeThemes(projectRecords(state),date)),0);
+ assert.equal(validateState(state).records.length,1);
+ saveRoutineAnswer(state,{...answer,answer:'skip'},[]);assert.equal(state.records.length,0);
+});
+
+
+test('이미 저장한 과거 루틴 답변을 수정해도 원래 기록 날짜는 유지한다',()=>{
+ const state=emptyState(),date=shiftDate(today(),-2);
+ state.routines=[validateRoutine({id:'practice',title:'연습',kind:'activity',days:[1],time:'23:55',enabled:true,themes:['career']})];
+ const answer={key:`${date}:practice`,routineId:'practice',date,title:'연습',answer:'done'};
+ putRecord(state,{id:`routine-${answer.key}`,date,text:'연습 완료',result:'',themes:['career'],saved:true},`routine:practice:${date}`);
+ state.checkins=[answer];saveRoutineAnswer(state,answer,['career']);
+ assert.equal(projectRecords(state)[0].date,date);assert.equal(state.records[0].saved,true);
+ assert.equal(state.records.length,1);
+});

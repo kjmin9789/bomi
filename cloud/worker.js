@@ -1,6 +1,6 @@
 import {createRemoteJWKSet, jwtVerify} from 'jose';
 import {buildPushPayload} from '@block65/webcrypto-web-push';
-import {emptyState, validateState, routineDue} from '../app/model.js';
+import {emptyState, validateState, routineReminders} from '../app/model.js';
 
 const MAX_BODY = 1024 * 1024;
 const keySets = new Map();
@@ -89,7 +89,7 @@ export function reminderDue(state, now) {
 
 export function dueNotifications(state,now) {
   const day=reminderDue(state,now);
-  return [...(day?[{key:day,body:'혹시 오늘 해낸 일이 있나요? 하나만 남겨볼까요?'}]:[]),...routineDue(state,now).map(r=>({key:r.key,body:`${r.title}, 정해둔 기준대로 해냈나요?`}))];
+  return [...(day?[{key:day,body:'혹시 오늘 해낸 일이 있나요? 하나만 남겨볼까요?'}]:[]),...routineReminders(state,now).map(r=>({key:r.deliveryKey,body:`${r.previous?'어제 ':''}${r.title}, 정해둔 기준대로 해냈나요?`}))];
 }
 export async function sendReminders(env, now = new Date(), send = fetch) {
   if (!env.ALLOWED_EMAIL || !env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY || !env.VAPID_SUBJECT) return;
