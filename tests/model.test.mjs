@@ -160,7 +160,10 @@ test('확인하지 않은 테마·미래 취침은 기록하지 않고 원상태
   assert.throws(()=>saveRoutineAnswer(state,answer,['unknown']));assert.equal(JSON.stringify(state),before);
   const previous=shiftDate(date,-1);
   saveRoutineAnswer(state,{...answer,answer:'bedtime',bedtime:`${previous}T23:30`,before:'01:00'},['health']);
-  assert.equal(projectRecords(state)[0].date,previous);
+  assert.equal(projectRecords(state)[0].date,date);
+  assert.equal(state.checkins[0].bedtime,`${previous}T23:30`);
+  assert.equal(flowerStage(activeThemes(projectRecords(state),previous)),0);
+  assert.equal(flowerStage(activeThemes(projectRecords(state),date)),1);
 });
 test('루틴 일정은 한국어 요일과 오전·오후로 표시한다',()=>{
   assert.equal(routineSchedule({days:[5,1,3],time:'20:30'}),'월·수·금요일 오후 8시 30분');
