@@ -6,7 +6,7 @@ const MAX_BODY = 1024 * 1024;
 const keySets = new Map();
 const headers = {
   'Cache-Control':'no-store', 'X-Content-Type-Options':'nosniff', 'Referrer-Policy':'no-referrer',
-  'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://raw.githubusercontent.com/kjmin9789/bomi/415755fc72fcb1b3fc20af2c71257e3d4894ec0e/app/assets/apple-touch-icon.png; connect-src 'self' http://127.0.0.1:4174; worker-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
+  'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://raw.githubusercontent.com/kjmin9789/bomi/89735764e45bc1f9c7ba26bd26425075aefef971/app/assets/apple-touch-icon.png; connect-src 'self' http://127.0.0.1:4174; worker-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
 };
 const json = (status, body) => Response.json(body, {status, headers});
 const failure = (status, message) => Object.assign(new Error(message), {status});
