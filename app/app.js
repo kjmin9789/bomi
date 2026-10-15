@@ -1,5 +1,5 @@
 import {api, CloudStore, enablePush, disablePush, codexRequest, isMobileDevice} from './cloud.js';
-import {reviewCodexDraft,moveGroupedRecord,restoreWork,mergeGroups,projectRecords,putRecord,patchGroup,sortedWorkGroups,newestRecords,groupRecords,ALL_THEMES,THEMES,today,shiftDate,weekStart,activeThemes,themesByDate,flowerStage,validateRecord,emptyState,validateState,weekSummary,demoState,validateRoutine,validateCheckin,pendingRoutines,routineReminders,saveRoutineAnswer,routineTime} from './model.js';
+import {reviewCodexDraft,moveGroupedRecord,restoreWork,mergeGroups,projectRecords,putRecord,patchGroup,sortedWorkGroups,newestRecords,groupRecords,ALL_THEMES,THEMES,today,shiftDate,weekStart,activeThemes,themesByDate,flowerStage,validateRecord,emptyState,validateState,weekSummary,demoState,validateRoutine,validateCheckin,pendingRoutines,routineReminders,saveRoutineAnswer,routineTime,routineWeekSummary} from './model.js';
 // Wanted Montage IconClose and IconCheckThick (MIT); see THIRD_PARTY_NOTICES.md.
 const closeIcon = '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path d="M4.86349 4.86346C5.21496 4.51199 5.78481 4.51199 6.13628 4.86346L11.9999 10.7271L17.8634 4.86346C18.2149 4.51199 18.7848 4.51199 19.1362 4.86346C19.4877 5.21493 19.4877 5.78478 19.1362 6.13625L13.2726 11.9999L19.1362 17.8635C19.4877 18.2149 19.4877 18.7848 19.1362 19.1363C18.7848 19.4877 18.2149 19.4877 17.8634 19.1363L11.9999 13.2727L6.13628 19.1363C5.78481 19.4877 5.21496 19.4877 4.86349 19.1363C4.51202 18.7848 4.51202 18.2149 4.86349 17.8635L10.7271 11.9999L4.86349 6.13625C4.51202 5.78478 4.51202 5.21493 4.86349 4.86346Z" fill="currentColor"/></svg>';
 const mobileDevice=isMobileDevice();
@@ -15,6 +15,7 @@ let cloud=null, cloudConfig=initialConfig, saving=false;
 let state=emptyState(), lastRaw=null, storageBlocked=false;
 try { if(localMode) { lastRaw=localStorage.getItem(KEY); if(lastRaw) state=validateState(JSON.parse(lastRaw)); } }
 catch { storageBlocked=true; }
+let routineView='manage', routineWeek=weekStart(today());
 let demo=false, demoData=demoState(), page='today', selected=today(), month=today().slice(0,7), filter='', reviewDate=weekStart(today()), timer, codexTimer;
 let projectedSource,projectedData;
 const data=()=>{const source=demo?demoData:state;if(source!==projectedSource){projectedSource=source;projectedData={...source,records:projectRecords(source)};}return projectedData;};
@@ -368,7 +369,14 @@ window.addEventListener('storage',event=>{if(event.key===KEY){toast('다른 창�
 const weekdays=['일','월','화','수','목','금','토'];
 function routinePage() {
   const routines=data().routines;
-  return `<div class="page-heading"><div><h1>내 루틴 관리</h1></div><button class="primary" data-action="routine-new">루틴 추가하기</button></div><div class="routine-list">${routines.map(r=>`<section class="card routine-card"><div class="section-top"><h2>${esc(r.title)}</h2>${r.themes.length?groupTags([r]):'<span class="count">테마 미선택</span>'}</div><p class="routine-schedule">${esc(routineTime(r.time))}</p><div class="routine-weekdays" aria-label="알림 요일">${r.days.slice().sort((a,b)=>a-b).map(d=>`<span class="count">${weekdays[d]}</span>`).join('')}</div><div class="inline-actions"><button class="secondary" data-action="routine-edit" data-id="${r.id}">일정 수정하기</button><div class="routine-notification"><span>알림</span><button type="button" class="routine-switch" role="switch" aria-checked="${r.enabled}" aria-label="${esc(r.title)} 알림" data-action="routine-toggle" data-id="${r.id}"><span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span></button></div></div></section>`).join('')}</div>`;
+  const tabs=`<div class="routine-tabs" role="group" aria-label="내 루틴 보기">${[['manage','루틴 관리'],['progress','실천 현황']].map(([id,label])=>`<button data-action="routine-view" data-id="${id}" aria-pressed="${routineView===id}">${label}</button>`).join('')}</div>`;
+  if(routineView==='progress')return `<div class="page-heading"><h1>내 루틴 관리</h1></div>${tabs}${routineProgress()}`;
+  return `<div class="page-heading"><div><h1>내 루틴 관리</h1></div><button class="primary" data-action="routine-new">루틴 추가하기</button></div>${tabs}<div class="routine-list">${routines.map(r=>`<section class="card routine-card"><div class="section-top"><h2>${esc(r.title)}</h2>${r.themes.length?groupTags([r]):'<span class="count">테마 미선택</span>'}</div><p class="routine-schedule">${esc(routineTime(r.time))}</p><div class="routine-weekdays" aria-label="알림 요일">${r.days.slice().sort((a,b)=>a-b).map(d=>`<span class="count">${weekdays[d]}</span>`).join('')}</div><div class="inline-actions"><button class="secondary" data-action="routine-edit" data-id="${r.id}">일정 수정하기</button><div class="routine-notification"><span>알림</span><button type="button" class="routine-switch" role="switch" aria-checked="${r.enabled}" aria-label="${esc(r.title)} 알림" data-action="routine-toggle" data-id="${r.id}"><span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span></button></div></div></section>`).join('')}</div>`;
+}
+function routineProgress() {
+  const rows=routineWeekSummary(data(),routineWeek);
+  const labels={done:'완료',skip:'미실천',unanswered:'미응답',upcoming:'예정',off:'일정 없음'};
+  return `<div class="page-heading routine-period"><div><h2>${routineWeek===weekStart(today())?'이번 주':'주간 실천 현황'}</h2><p>${fmt(routineWeek)} — ${fmt(shiftDate(routineWeek,6))}</p></div><div class="arrows"><button data-action="routine-week" data-id="-7" aria-label="이전 주">‹</button><button data-action="routine-week" data-id="7" aria-label="다음 주" ${routineWeek>=weekStart(today())?'disabled':''}>›</button></div></div><p class="quiet">현재 등록 요일 기준</p><div class="routine-list">${rows.length?rows.map(r=>`<section class="card routine-progress"><div class="section-top"><h2>${esc(r.title)}</h2><strong class="routine-percent">${r.percent}%</strong></div><p>${r.completed} / ${r.target}회 완료</p><progress max="100" value="${r.percent}" aria-label="${esc(r.title)} 주간 달성률">${r.percent}%</progress><div class="progress-scale" aria-hidden="true"><span>0%</span><span>100%</span></div><div class="routine-week-grid">${r.days.map((d,i)=>`<div class="routine-day ${d.status}"><span>${['월','화','수','목','금','토','일'][i]}</span><span>${labels[d.status]}</span></div>`).join('')}</div></section>`).join(''):'<section class="card"><p>등록한 루틴이 없어요.</p><button class="primary" data-action="routine-new">루틴 추가하기</button></section>'}</div>`;
 }
 function routineThemes(ids=[]) {
   return `<fieldset class="theme-picker"><legend>완료 기록에 연결할 테마</legend>${THEMES.map(t=>`<label><input type="checkbox" name="themes" value="${t.id}" ${ids.includes(t.id)?'checked':''}><span style="--accent:${t.color}">${themeIcons[t.id]}${t.name}</span></label>`).join('')}</fieldset>`;
@@ -393,6 +401,8 @@ function checkinForm(id, key='') {
   showDialog(`${closeButton}<h2>${esc(r.title)}</h2>${checkinAnswerForm(r,old?.date||r.date||today(),old)}`);
 }
 async function routineAction(kind,id) {
+  if(kind==='routine-view'){routineView=id==='progress'?'progress':'manage';render();return;}
+  if(kind==='routine-week'){const next=shiftDate(routineWeek,Number(id));if(next<=weekStart(today()))routineWeek=next;render();return;}
   if(kind==='routine-new'){routineForm();return;}
   if(kind==='routine-edit'){routineForm(id);return;}
   if(kind==='routine-toggle'){if(await update(s=>{const r=s.routines.find(r=>r.id===id);r.enabled=!r.enabled;}))render();return;}

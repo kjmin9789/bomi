@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {putRecord,projectRecords,sortedWorkGroups,newestRecords,groupRecords,activeThemes,flowerStage,validateRecord,validateState,emptyState,weekStart,shiftDate,weekSummary,validDate} from '../app/model.js';
+import {putRecord,projectRecords,sortedWorkGroups,newestRecords,groupRecords,activeThemes,flowerStage,validateRecord,validateState,emptyState,routineWeekSummary,weekStart,shiftDate,weekSummary,validDate} from '../app/model.js';
 const record=(id,date='2026-10-10',themes=['career'])=>({id,date,text:'원고 준비',result:'임시저장 원고',themes,saved:false});
 test('테마 중복 기록은 실천 테마 수를 바꾸지 않는다',()=>{
   const once=activeThemes([record('1')],'2026-10-10');
@@ -368,4 +368,32 @@ test('재수집을 신규·변경·기존·중복 가능으로 구분하고 사�
 test('같은 초안 안의 식별자만 다른 동일 내용도 중복 가능으로 표시한다',async()=>{
  const {reviewCodexDraft}=await import('../app/model.js');const job={date:'2026-10-14',groups:[{id:'g',items:[{id:'a',text:'행동을 마쳤다',result:''},{id:'b',text:'행동을 마쳤다',result:''}]}]};
  assert.deepEqual(reviewCodexDraft(job,[]).counts,{new:1,updated:0,existing:0,possible:1});
+});
+
+test('루틴 주간 달성률은 월~일의 전체 목표로 계산하고 상태를 구분한다',()=>{
+  const state=emptyState();
+  state.routines=[{id:'exercise',title:'운동',days:[1,2,3,4,5],enabled:false}];
+  state.checkins=[{key:'2026-10-12:exercise',routineId:'exercise',date:'2026-10-12',answer:'done'},
+    {key:'2026-10-13:exercise',routineId:'exercise',date:'2026-10-13',answer:'skip'},
+    {key:'2026-10-11:exercise',routineId:'exercise',date:'2026-10-11',answer:'done'}];
+  const [r]=routineWeekSummary(state,'2026-10-18','2026-10-14');
+  assert.equal(r.target,5);assert.equal(r.completed,1);assert.equal(r.percent,20);
+  assert.deepEqual(r.days.map(d=>d.status),['done','skip','unanswered','upcoming','upcoming','off','off']);
+  assert.equal(r.days[0].date,'2026-10-12');
+  state.checkins[0].answer='skip';
+  assert.equal(routineWeekSummary(state,'2026-10-12','2026-10-14')[0].percent,0);
+});
+test('루틴 완료는 회차별 한 번만 계산하고 100%를 넘지 않는다',()=>{
+  const state=emptyState();state.routines=[{id:'r',title:'루틴',days:[1,2,3,4,5]}];
+  state.checkins=Array.from({length:7},(_,i)=>({key:`${shiftDate('2026-10-12',i)}:r`,answer:'done'}));
+  state.checkins.push({...state.checkins[0]});
+  const [r]=routineWeekSummary(state,'2026-10-12','2026-10-18');
+  assert.equal(r.completed,5);assert.equal(r.percent,100);
+  assert.deepEqual(routineWeekSummary(emptyState(),'2026-10-12'),[]);
+});
+test('과거 취침 답변은 기준 시각 충족 여부로 집계한다',()=>{
+  const state=emptyState();state.routines=[{id:'sleep',title:'취침',days:[1,2]}];
+  state.checkins=[{key:'2026-10-12:sleep',answer:'bedtime',date:'2026-10-12',before:'01:00',bedtime:'2026-10-12T00:30'},
+    {key:'2026-10-13:sleep',answer:'bedtime',date:'2026-10-13',before:'01:00',bedtime:'2026-10-13T01:30'}];
+  assert.equal(routineWeekSummary(state,'2026-10-12','2026-10-18')[0].percent,50);
 });

@@ -218,6 +218,22 @@ export function validateRoutine(r) {
   if(r.memo!==undefined&&(typeof r.memo!=='string'||r.memo.length>500))throw new Error('메모는 500자까지 적을 수 있어요.');
   return {...(r.memo?.trim()?{memo:r.memo.trim()}:{}),themes:[...themes],id:r.id,title:r.title.trim(),kind:r.kind,time:r.time,days:[...r.days],enabled:r.enabled,...(r.kind==='bedtime'?{before:r.before}:{})};
 }
+// Weekly adherence follows the scheduled occurrence, including answers given the next day.
+export function routineWeekSummary(state,date,asOf=today()) {
+  const start=weekStart(date);
+  const answers=new Map(state.checkins.map(a=>[a.key,a]));
+  return state.routines.map(r=>{
+    const days=Array.from({length:7},(_,i)=>{
+      const date=shiftDate(start,i), scheduled=r.days.includes(new Date(`${date}T12:00:00Z`).getUTCDay());
+      const answer=answers.get(routineOccurrence(r,date));
+      const done=answer?.answer==='done'||(answer?.answer==='bedtime'&&bedtimeBefore(answer));
+      const status=!scheduled?'off':date>asOf?'upcoming':done?'done':answer?'skip':'unanswered';
+      return {date,status};
+    });
+    const target=days.filter(d=>d.status!=='off').length, completed=days.filter(d=>d.status==='done').length;
+    return {id:r.id,title:r.title,target,completed,percent:target?Math.round(completed/target*100):0,days};
+  });
+}
 export function routineOccurrence(r,date) { return `${date}:${r.id}`; }
 export function routineDue(state, now=new Date()) {
   const date=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul'}).format(now);
