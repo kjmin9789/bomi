@@ -51,6 +51,17 @@ export function sortedWorkGroups(records) {
   const rank=items=>Math.min(...items.flatMap(r=>r.themes.map(id=>({health:0,money:1,career:2}[id]??3))));
   return groupRecords(newestRecords(records)).sort((a,b)=>b[1].length-a[1].length||rank(a[1])-rank(b[1]));
 }
+export function reviewCodexDraft(job,records) {
+  const groups=job.groups||groupRecords(job.records||[]).map(([title,items])=>({id:`import:${items[0].id}`,title,themes:[...new Set(items.flatMap(r=>r.themes))],items}));
+  const counts={new:0,updated:0,existing:0,possible:0},byId=new Map(records.map(r=>[r.id,r])),candidates=[...records];
+  const normalize=text=>(text||'').trim().replace(/\s+/g,' ');
+  const same=(a,b)=>['summary','text','result'].every(key=>normalize(a[key])===normalize(b[key]));
+  return {counts,groups:groups.map(g=>({...g,items:g.items.map(item=>{
+    const old=byId.get(item.id);
+    const status=old?(same(old,item)?'existing':'updated'):candidates.some(r=>r.date===job.date&&normalize(r.text)===normalize(item.text)&&normalize(r.result)===normalize(item.result))?'possible':'new';
+    counts[status]++;candidates.push({...item,date:job.date});return {...item,reviewStatus:status};
+  })}))};
+}
 export function validateRecord(record, maxDate=today(), allowLegacy=false) {
   if (!record || typeof record.id !== 'string' || record.id.length>100 || !record.id) throw new Error('기록 식별자를 확인해주세요.');
   if (!validDate(record.date) || record.date>maxDate) throw new Error('실제로 한 일은 오늘까지의 날짜로 남겨주세요.');

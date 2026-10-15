@@ -350,3 +350,22 @@ test('이미 저장한 과거 루틴 답변을 수정해도 원래 기록 날짜
  assert.equal(projectRecords(state)[0].date,date);assert.equal(state.records[0].saved,true);
  assert.equal(state.records.length,1);
 });
+
+test('재수집을 신규·변경·기존·중복 가능으로 구분하고 사용자 묶음 변경은 신규로 세지 않는다',async()=>{
+ const {reviewCodexDraft}=await import('../app/model.js');
+ const records=[{id:'a',date:'2026-10-13',summary:'첫 작업',text:'첫 작업 완료',result:'',group:'사용자가 옮긴 묶음',themes:['health']},{id:'b',date:'2026-10-14',text:'직접 작성한 일',result:''}];
+ const job={date:'2026-10-14',groups:[{id:'g',title:'자동 묶음',themes:['career'],items:[
+  {id:'a',summary:'첫 작업',text:'첫 작업 완료',result:''},
+  {id:'b',text:'수정된 내용',result:''},
+  {id:'c',text:'직접 작성한 일',result:''},
+  {id:'d',text:'새 작업',result:''}
+ ]}]};
+ const before=structuredClone(records),review=reviewCodexDraft(job,records);
+ assert.deepEqual(review.counts,{new:1,updated:1,existing:1,possible:1});assert.deepEqual(records,before);
+ job.date='2026-10-15';assert.equal(reviewCodexDraft(job,records).counts.possible,0);
+});
+
+test('같은 초안 안의 식별자만 다른 동일 내용도 중복 가능으로 표시한다',async()=>{
+ const {reviewCodexDraft}=await import('../app/model.js');const job={date:'2026-10-14',groups:[{id:'g',items:[{id:'a',text:'행동을 마쳤다',result:''},{id:'b',text:'행동을 마쳤다',result:''}]}]};
+ assert.deepEqual(reviewCodexDraft(job,[]).counts,{new:1,updated:0,existing:0,possible:1});
+});

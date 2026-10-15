@@ -1,3 +1,4 @@
+import {reviewCodexDraft} from '../app/model.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -149,7 +150,8 @@ test('드롭 저장 실패는 묶음과 실행 취소 상태를 바꾸지 않고
 
 test('Codex 안내 닫기는 자동 확인과 늦은 응답을 막고 선택한 재연결로 재개한다',async()=>{
  let resolve,calls=0;const notice={innerHTML:''},saved={};
- const context=vm.createContext({mobileDevice:false,demo:false,document:{hidden:false,querySelector:()=>notice},dialog:{open:false},localStorage:{getItem:()=> '1',setItem:(k,v)=>saved[k]=v},codexApi:()=>{calls++;return new Promise(r=>resolve=r);},esc:String,fmt:String,closeIcon:'<svg></svg>'});
+ const context=vm.createContext({reviewCodexDraft,data:()=>({records:[]}),mobileDevice:false,demo:false,document:{hidden:false,querySelector:()=>notice},dialog:{open:false},localStorage:{getItem:()=> '1',setItem:(k,v)=>saved[k]=v},codexApi:()=>{calls++;return new Promise(r=>resolve=r);},esc:String,fmt:String,closeIcon:'<svg></svg>'});
+ vm.runInContext(source.slice(source.indexOf('function codexReviewCounts('),source.indexOf('function reviewCodex(')),context);
  vm.runInContext(source.slice(source.indexOf('let codexWatch=false;'),source.indexOf('setInterval(refreshCodexNotice')),context);
  const pending=context.refreshCodexNotice();context.dismissCodexNotice();resolve({job:{date:'2026-10-12',status:'queued'}});await pending;
  assert.equal(notice.innerHTML,'');assert.equal(saved['bomi.codex.watch'],'0');
