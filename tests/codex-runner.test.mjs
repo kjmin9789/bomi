@@ -56,3 +56,65 @@ test('자동 수집의 관련 작업 묶음은 보미 API에 초안으로 전달
  const saved=join(directory,`${job.id}.result.json`);assert.deepEqual(JSON.parse(await readFile(saved)),raw);assert.equal((await stat(saved)).mode&0o777,0o600);
  assert.equal(JSON.parse(await readFile(join(directory,`${job.id}.job.json`))).status,'queued');
 });
+
+test('한 연결로 목록과 여러 페이지를 읽고 종료한다',async()=>{
+ const {createHistory}=await import('../codex-runner.mjs');let launches=0,killed=0,initializations=0;
+ const client=createHistory({launch:()=>{
+  launches++;const child=new EventEmitter();child.kill=()=>killed++;child.stdout=new PassThrough();child.stdin=new PassThrough();
+  child.stdin.on('data',data=>{for(const line of data.toString().trim().split('\n')){const req=JSON.parse(line);if(req.method==='initialize')initializations++;if(req.id)queueMicrotask(()=>child.stdout.write(JSON.stringify({id:req.id,result:{data:[],nextCursor:null}})+'\n'));}});return child;
+ }});
+ await client.read('thread/list',{});await client.read('thread/turns/list',{});await client.read('thread/turns/list',{});client.close();
+ assert.equal(launches,1);assert.equal(initializations,1);assert.equal(killed,1);await assert.rejects(client.read('thread/list',{}));
+});
+
+test('날짜 후보만 반환하고 자정 경계·아카이브·모든 페이지를 보존하며 캐시를 재사용한다',async()=>{
+ const {collectionHistory}=await import('../codex-runner.mjs');const cache={},calls=[];
+ const window={from:'2026-10-13T15:00:00.000Z',to:'2026-10-14T15:00:00.000Z'},sec=s=>Date.parse(s)/1000;
+ let updated=sec(window.to)-1;
+ const turn=(id,time)=>({id,status:'completed',startedAt:sec(time)-60,completedAt:sec(time),items:[{type:'agentMessage',text:id}]});
+ const read=async(method,p)=>{calls.push([method,p]);if(method==='thread/list')return {data:p.archived?[{id:'archive',updatedAt:updated}]:[{id:'old',updatedAt:sec(window.from)-10},{id:'collector',updatedAt:updated},{id:'active',updatedAt:updated}],nextCursor:null};
+  return p.cursor?{data:[turn('before','2026-10-13T14:59:59Z')],nextCursor:null}:{data:[turn('start',window.from),turn('inside','2026-10-14T00:00:00Z'),{...turn('next-day',window.to),startedAt:sec(window.to)}],nextCursor:'older'};
+ };
+ let prepared=await collectionHistory(read,window,{cache,exclude:['collector']});assert.deepEqual(prepared.threads.map(t=>t.id),['active','archive']);
+ assert.deepEqual((await prepared.read('active')).data.map(t=>t.id),['start','inside']);assert.equal(calls.filter(c=>c[0]==='thread/turns/list').length,2);
+ prepared=await collectionHistory(read,{...window,to:'2026-10-14T15:00:01Z'},{cache});
+ assert.deepEqual((await prepared.read('active')).data.map(t=>t.id),['start','inside','next-day']);assert.equal(calls.filter(c=>c[0]==='thread/turns/list').length,2);
+ updated++;prepared=await collectionHistory(read,window,{cache});await prepared.read('active');assert.equal(calls.filter(c=>c[0]==='thread/turns/list').length,4);
+ await assert.rejects(prepared.read('not-listed'));
+});
+
+test('진행 중·시각 미확인·실패한 조회는 캐시로 건너뛰지 않는다',async()=>{
+ const {collectionHistory}=await import('../codex-runner.mjs');const cache={},window={from:'2026-10-13T15:00:00Z',to:'2026-10-14T15:00:00Z'};let calls=0,fail=false;
+ const read=async(method,p)=>{if(method==='thread/list')return {data:p.archived?[]:[{id:'active',updatedAt:1791961200}],nextCursor:null};calls++;if(fail)throw Error('private');return {data:[{id:'in-flight',status:'inProgress',startedAt:1791961200,completedAt:null,items:[]}],nextCursor:null};};
+ let prepared=await collectionHistory(read,window,{cache});await prepared.read('active');await prepared.read('active');assert.equal(calls,2);assert.deepEqual(cache,{});
+ fail=true;await assert.rejects(prepared.read('active'));assert.deepEqual(cache,{});
+});
+
+test('변경 후보가 없으면 AI 세션 없이 빈 초안을 완료한다',async t=>{
+ const dir=await mkdtemp(join(tmpdir(),'bomi-empty-'));t.after(()=>rm(dir,{recursive:true,force:true}));let calls=0;
+ const result=await runCollection('test',join(dir,'out.json'),{launch:()=>{throw Error('AI should not start');},readHistory:async()=>{calls++;return {data:[],nextCursor:null};},collection:{requestId:'test',date:'2026-10-14',window:{from:'2026-10-13T15:00:00Z',to:'2026-10-14T15:00:00Z'}}});
+ assert.equal(calls,2);assert.deepEqual((await result.done).groups,[]);assert.equal((await result.done).coverageComplete,true);
+});
+
+test('목록 조회 실패와 커서 반복을 빈 결과 성공으로 처리하지 않는다',async()=>{
+ const {collectionHistory}=await import('../codex-runner.mjs');const window={from:'2026-10-13T15:00:00Z',to:'2026-10-14T15:00:00Z'};
+ await assert.rejects(collectionHistory(async()=>{throw Error('failed');},window));
+ await assert.rejects(collectionHistory(async()=>({data:[],nextCursor:'repeat'}),window),/반복/);
+});
+
+test('조회 실패 후 AI가 완료로 응답해도 수집 구간을 건너뛰지 않는다',async t=>{
+ const dir=await mkdtemp(join(tmpdir(),'bomi-failed-page-'));t.after(()=>rm(dir,{recursive:true,force:true}));let child,toolResult;
+ const launch=()=>{child=new EventEmitter();child.kill=()=>{};child.stdout=new PassThrough();child.stdin=new PassThrough();child.stdin.on('data',d=>{for(const line of d.toString().trim().split('\n')){const req=JSON.parse(line);if(req.id===50){toolResult=req;continue;}if(req.method&&req.id)queueMicrotask(()=>child.stdout.write(JSON.stringify({id:req.id,result:req.method==='thread/start'?{thread:{id:'00000000-0000-0000-0000-000000000001'}}:{}})+'\n'));}});return child;};
+ const execution=await runCollection('가상 수집',join(dir,'out.json'),{launch,readHistory:async()=>{throw Error('private error');}});
+ child.stdout.write(JSON.stringify({id:50,method:'item/tool/call',params:{tool:'bomi_history',arguments:{action:'list'}}})+'\n');
+ for(let n=0;n<20&&!toolResult;n++)await new Promise(r=>setTimeout(r,5));assert.equal(toolResult.result.success,false);assert.ok(!JSON.stringify(toolResult).includes('private error'));
+ child.stdout.write(JSON.stringify({method:'item/completed',params:{item:{type:'agentMessage',phase:'final_answer',text:'{"groups":[],"coverageComplete":true,"note":""}'}}})+'\n');child.stdout.write(JSON.stringify({method:'turn/completed',params:{turn:{status:'completed'}}})+'\n');
+ assert.equal((await execution.done).coverageComplete,false);assert.match((await execution.done).note,/실패/);
+});
+
+test('조회 시작 전 시작해서 종료 후 끝난 턴도 누락시키지 않고 시각과 함께 전달한다',async()=>{
+ const {collectionHistory}=await import('../codex-runner.mjs');const window={from:'2026-10-13T15:00:00Z',to:'2026-10-14T15:00:00Z'};
+ const turn={id:'crossing',status:'completed',startedAt:Date.parse(window.from)/1000-60,completedAt:Date.parse(window.to)/1000+60,items:[]};
+ const prepared=await collectionHistory(async(method,p)=>({data:method==='thread/list'?(p.archived?[]:[{id:'t',updatedAt:turn.completedAt}]):[turn],nextCursor:null}),window);
+ assert.equal((await prepared.read('t')).data[0].id,'crossing');
+});
